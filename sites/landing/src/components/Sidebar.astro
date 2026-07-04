@@ -1,0 +1,45 @@
+---
+import { loadDocsNav, type SidebarSection } from "../utils/summary";
+import { withBase } from "../utils/base";
+
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+const sections = loadDocsNav();
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "") || "";
+
+function isActive(href: string): boolean {
+  const full = href === "/" ? base + "/" : base + href;
+  if (href === "/") return currentPath === "/" || currentPath === "" || currentPath === base + "/" || currentPath === base;
+  return currentPath === full || currentPath === full + "/";
+}
+---
+
+<aside class="sidebar" aria-label="Documentation navigation">
+  <nav class="sidebar__inner">
+    {sections.map((section: SidebarSection) => {
+      return (
+        <div class="nav-section">
+          {section.heading && (
+            <div class="nav-section__heading">{section.heading}</div>
+          )}
+          <ul class="nav-list">
+            {section.entries.map((entry) =>
+                <li>
+                  <a
+                    class:list={["nav-item", { "nav-item--active": isActive(entry.href) }]}
+                    href={withBase(entry.href)}
+                  >
+                    {entry.title}
+                  </a>
+                </li>
+            )}
+          </ul>
+        </div>
+      );
+    })}
+  </nav>
+</aside>

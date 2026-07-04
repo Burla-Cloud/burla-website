@@ -1,0 +1,36 @@
+---
+import DocLayout from "../layouts/DocLayout.astro";
+import { withBase } from "../utils/base";
+---
+
+<DocLayout
+  title="Documentation"
+  description="Everything you need to run Python workloads on Burla."
+  pageHeading="Documentation"
+  pageSubtitle="Everything you need to run Python workloads on Burla. Start with the quickstart, then dig into API details, use cases, and examples."
+>
+  <div class="docs-index">
+    <section>
+      <h2>Start here</h2>
+      <ul>
+        <li><a href={withBase("/docs/quickstart")}>Quickstart</a> - run your first Burla job.</li>
+        <li><a href={withBase("/docs/api-reference")}>API/CLI Reference</a> - every function and command.</li>
+        <li><a href={withBase("/docs/about")}>About Burla</a> - what Burla is built for.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Guides</h2>
+      <ul>
+        <li><a href={withBase("/docs/use-cases/process-thousands-of-files-quickly")}>Process thousands of files quickly</a></li>
+        <li><a href={withBase("/docs/how-to/choose-how-to-split-your-work")}>Choose how to split your work</a></li>
+        <li><a href={withBase("/docs/how-to/limit-parallelism-for-apis-databases-and-websites")}>Limit parallelism for external services</a></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Examples</h2>
+      <p>See the <a href={withBase("/examples")}>examples index</a> for real workloads across ML, data pipelines, web scraping, and scientific computing.</p>
+    </section>
+  </div>
+</DocLayout>

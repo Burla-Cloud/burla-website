@@ -1,0 +1,131 @@
+---
+import Header from "../components/Header.astro";
+import Sidebar from "../components/Sidebar.astro";
+import PageOutline from "../components/PageOutline.astro";
+import { withBase } from "../utils/base";
+import "../styles/reset.css";
+import "../styles/gitbook.css";
+import "../styles/prose.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  hideFirstHeading?: boolean;
+  outlineBody?: string;
+  pageHeading?: string;
+  pageSubtitle?: string;
+  pageSection?: string | null;
+}
+
+const { title, description, hideFirstHeading, outlineBody, pageHeading, pageSubtitle, pageSection } = Astro.props;
+const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
+const pageTitle = title === "Home" ? "Burla" : `${title} | Burla`;
+const showOutline = !!outlineBody;
+const showDocsNav = title !== "Home";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <Header />
+    <div class:list={["page", { "page--home": !showDocsNav, "page--docs-nav": showDocsNav, "page--with-outline": showOutline, "page--examples": pageSection === "Examples" }]}>
+      {showDocsNav && <Sidebar currentPath={pathname} />}
+      <main class="content">
+        <article class:list={["prose", { "prose--hide-h1": hideFirstHeading }]}>
+          {pageSection && <div class="prose__section-label">{pageSection}</div>}
+          {pageHeading && <h1 class="prose__page-title">{pageHeading}</h1>}
+          {pageSubtitle && <p class="prose__page-subtitle">{pageSubtitle}</p>}
+          <slot />
+        </article>
+      </main>
+      {showOutline && <PageOutline body={outlineBody!} />}
+    </div>
+    <script>
+      const tokenColor = {
+        primary: "rgb(95, 127, 138)",
+        warning: "rgb(187, 92, 0)",
+        tint: "rgb(89, 115, 122)",
+        text: "rgb(25, 30, 31)",
+      };
+
+      const tokenSpan = (text: string, color: string) => {
+        const span = document.createElement("span");
+        span.textContent = text;
+        span.style.color = color;
+        return span;
+      };
+
+      for (const span of document.querySelectorAll<HTMLSpanElement>("pre.astro-code code .line > span")) {
+        const text = span.textContent ?? "";
+        const replacement: Array<[string, string]> =
+          text === " list" ? [[" ", tokenColor.text], ["list", tokenColor.warning]] :
+          text === "range" ? [["range", tokenColor.primary]] :
+          text === " my_function" ? [[" ", tokenColor.text], ["my_function", tokenColor.primary]] :
+          text === "    print" ? [["    ", tokenColor.text], ["print", tokenColor.primary]] :
+          text === "{x}" ? [["{", tokenColor.warning], ["x", tokenColor.primary], ["}", tokenColor.warning]] :
+          text === "remote_parallel_map" ? [["remote_parallel_map", tokenColor.primary]] :
+          text === "my_function" ? [["my_function", tokenColor.primary]] :
+          text === " my_inputs" ? [[" my_inputs", tokenColor.primary]] :
+          [];
+        if (replacement.length) span.replaceWith(...replacement.map(([value, color]) => tokenSpan(value, color)));
+      }
+
+      for (const pre of document.querySelectorAll<HTMLPreElement>("pre.astro-code")) {
+        if (pre.querySelector(".code-copy")) continue;
+        const btn = document.createElement("button");
+        btn.className = "code-copy";
+        btn.type = "button";
+        btn.setAttribute("aria-label", "Copy code");
+        btn.innerHTML = "Copy";
+        btn.addEventListener("click", async () => {
+          const code = pre.querySelector("code");
+          if (!code) return;
+          try {
+            await navigator.clipboard.writeText(code.textContent ?? "");
+            btn.innerHTML = "Copied";
+            setTimeout(() => (btn.innerHTML = "Copy"), 1400);
+          } catch {
+            btn.innerHTML = "Error";
+          }
+        });
+        pre.appendChild(btn);
+      }
+
+      for (const table of document.querySelectorAll<HTMLTableElement>('table[data-view="cards"]')) {
+        const iconHref = document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href;
+        const assetBase = iconHref.replace(/\/favicon\.svg$/, "/gitbook-assets");
+        const grid = document.createElement("div");
+        grid.className = "example-card-grid";
+        for (const row of table.querySelectorAll<HTMLTableRowElement>("tbody tr")) {
+          const cells = row.querySelectorAll<HTMLTableCellElement>("td");
+          const link = cells[2]!.querySelector<HTMLAnchorElement>("a")!;
+          const slug = new URL(link.href).pathname.split("/").filter(Boolean).pop()!;
+          const card = document.createElement("a");
+          card.className = "example-card";
+          card.href = link.href;
+          card.innerHTML = `
+            <div class="example-card__media"><img src="${assetBase}/more-examples/${slug}.png" alt="" loading="lazy" /></div>
+            <div class="example-card__title">${cells[0]!.innerHTML}</div>
+            <div class="example-card__description">${cells[1]!.innerHTML}</div>
+            <span class="example-card__cta">Read example</span>
+          `;
+          grid.appendChild(card);
+        }
+        table.replaceWith(grid);
+      }
+    </script>
+  </body>
+</html>

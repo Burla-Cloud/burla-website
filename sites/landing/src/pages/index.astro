@@ -1,0 +1,16 @@
+---
+import { getEntry, render } from "astro:content";
+import DocLayout from "../layouts/DocLayout.astro";
+
+const entry = await getEntry("docs", "README");
+if (!entry) throw new Error("Missing user-docs/README.md");
+const { Content } = await render(entry);
+---
+
+<DocLayout
+  title="Home"
+  description="Burla is a high-performance parallel processing library for data-teams that iterate quickly. Scale Python across 1000 CPUs or GPUs in 1 second."
+  hideFirstHeading
+>
+  <Content />
+</DocLayout>

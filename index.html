@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Burla website candidates</title>
+    <meta name="description" content="All candidate Burla landing pages, hosted side by side." />
+    <style>
+      :root {
+        --bg: #f8fbfc;
+        --ink: #16272e;
+        --muted: #59737a;
+        --cyan: #7ecbdd;
+        --cyan-deep: #2a7f96;
+        --card: #ffffff;
+        --edge: rgba(59, 90, 100, 0.14);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 24px;
+      }
+      main {
+        max-width: 880px;
+        width: 100%;
+      }
+      h1 {
+        font-size: 28px;
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+      }
+      p.sub {
+        color: var(--muted);
+        margin-bottom: 36px;
+        font-size: 15px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      a.card {
+        display: block;
+        background: var(--card);
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+        padding: 22px 20px;
+        text-decoration: none;
+        color: inherit;
+        transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+      }
+      a.card:hover {
+        border-color: var(--cyan);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(59, 90, 100, 0.1);
+      }
+      .card h2 {
+        font-size: 17px;
+        margin-bottom: 6px;
+      }
+      .card p {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.45;
+        margin-bottom: 14px;
+      }
+      .card span {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--cyan-deep);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Burla website candidates</h1>
+      <p class="sub">Three landing page directions, hosted side by side from one repo.</p>
+      <div class="grid">
+        <a class="card" href="./landing/">
+          <h2>Landing + Docs</h2>
+          <p>Product landing page with the full docs site, styled after docs.burla.dev.</p>
+          <span>Open &rarr;</span>
+        </a>
+        <a class="card" href="./gtm/">
+          <h2>Enterprise GTM</h2>
+          <p>Utilization pitch: pipeline cost comparisons, pilot process, and pricing.</p>
+          <span>Open &rarr;</span>
+        </a>
+        <a class="card" href="./agents/">
+          <h2>Burla for Agents</h2>
+          <p>Burla as the agent-native distributed Python runtime.</p>
+          <span>Open &rarr;</span>
+        </a>
+      </div>
+    </main>
+  </body>
+</html>
