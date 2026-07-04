@@ -9,6 +9,7 @@ All candidate Burla landing pages in one repo, hosted side by side on GitHub Pag
 | [`/landing/`](https://burla-cloud.github.io/burla-website/landing/) | Product landing page + full docs site (Astro) | [`landing-page`](https://github.com/Burla-Cloud/landing-page) |
 | [`/gtm/`](https://burla-cloud.github.io/burla-website/gtm/) | Enterprise GTM site: utilization pitch, pilot process, pricing (Vite + React) | [`burla-gtm-site`](https://github.com/Burla-Cloud/burla-gtm-site) |
 | [`/agents/`](https://burla-cloud.github.io/burla-website/agents/) | Burla as the agent-native distributed Python runtime (Vite + React) | [`burla-for-agents`](https://github.com/Burla-Cloud/burla-for-agents) |
+| [`/hero/`](https://burla-cloud.github.io/burla-website/hero/) | Cinematic cosmic-zoom hero section (Vite + React + three.js) | `landing-hero` branch of [`burla`](https://github.com/Burla-Cloud/burla) |
 
 The root `index.html` is a small hub page linking to the three variants.
 
@@ -19,6 +20,7 @@ index.html        hub page served at the site root
 sites/landing/    Astro app (docs content is pulled from Burla-Cloud/user-docs at build time)
 sites/gtm/        Vite + React app
 sites/agents/     Vite + React app
+sites/hero/       Vite + React + three.js app (base path set via VITE_BASE env var)
 ```
 
 ## Local dev

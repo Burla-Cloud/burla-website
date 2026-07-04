@@ -34,6 +34,7 @@ jobs:
             sites/landing/package-lock.json
             sites/gtm/package-lock.json
             sites/agents/package-lock.json
+            sites/hero/package-lock.json
 
       - name: Build landing site
         working-directory: sites/landing
@@ -59,6 +60,14 @@ jobs:
           npm ci
           npm run build
 
+      - name: Build hero site
+        working-directory: sites/hero
+        env:
+          VITE_BASE: /burla-website/hero/
+        run: |
+          npm ci
+          npm run build
+
       - name: Assemble combined site
         run: |
           mkdir _site
@@ -66,6 +75,7 @@ jobs:
           cp -R sites/landing/dist _site/landing
           cp -R sites/gtm/dist _site/gtm
           cp -R sites/agents/dist _site/agents
+          cp -R sites/hero/dist _site/hero
 
       - uses: actions/configure-pages@v5
 
