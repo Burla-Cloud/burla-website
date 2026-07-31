@@ -2,7 +2,7 @@
 
 Full scrollytelling landing page for Burla: "The simplest way to process massive amounts of data."
 
-A scroll-driven WebGL zoom opens on one line of Python and pulls back into a galaxy of 10,000 machines, then resolves into a narrative page: what Burla is and how it works (`pip install burla` + the one-function API), a 12-tile grid of real example jobs linked to the docs, three feature blocks (efficiency with the $14.20/$32/$48 cost bars, simplicity + agent rules snippet, speed/scale with an igniting VM wall), FAQ, and final CTA.
+A scroll-driven WebGL zoom opens on one line of Python and pulls back into a galaxy of 10,000 machines, then descends through a cloud deck into a light "sky" theme for the narrative page: what Burla is and how it works (`pip install burla` + the one-function API), a 12-tile grid of real example jobs linked to the docs, three feature blocks (efficiency with the $14.20/$32/$48 cost bars, simplicity + agent rules snippet, speed/scale with an igniting VM wall), FAQ, and final CTA. Theme colors are CSS variables (`:root` = space, `.theme-day` = sky) flipped by the `theme-day` wrapper in `App.tsx`.
 
 **Live: [burla-cloud.github.io/burla-website/hero](https://burla-cloud.github.io/burla-website/hero/)**
 

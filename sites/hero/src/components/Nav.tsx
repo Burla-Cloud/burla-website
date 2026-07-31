@@ -1,12 +1,31 @@
+import { useEffect, useState } from "react";
 import { motion, useScroll } from "framer-motion";
 import { NAV } from "../content";
 import { PipInstall } from "./PipInstall";
 
 export function Nav() {
   const { scrollYProgress } = useScroll();
+  const [day, setDay] = useState(false);
+
+  // Flip the nav to the sky theme once the day zone reaches it.
+  useEffect(() => {
+    const zone = document.querySelector<HTMLElement>("[data-day-zone]");
+    if (!zone) return;
+    // Flip while still inside the descent band, once the backdrop under the
+    // nav has turned to bright sky (~last half viewport before the day zone).
+    const onScroll = () =>
+      setDay(window.scrollY >= zone.offsetTop - window.innerHeight * 0.55);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40">
+    <header className={`fixed inset-x-0 top-0 z-40 ${day ? "theme-day" : ""}`}>
       {/* Page scroll progress hairline */}
       <motion.div
         className="h-[2px] origin-left bg-accent"
@@ -16,7 +35,9 @@ export function Nav() {
         <div className="flex items-center justify-between px-6 py-4 sm:px-10">
           <a
             href="#top"
-            className="text-shadow-soft font-display text-xl font-extrabold lowercase tracking-tight text-ink"
+            className={`font-display text-xl font-extrabold lowercase tracking-tight text-ink ${
+              day ? "" : "text-shadow-soft"
+            }`}
           >
             {NAV.wordmark}
           </a>

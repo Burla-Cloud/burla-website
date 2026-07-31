@@ -3,7 +3,7 @@ import { EXAMPLES } from "../content";
 
 export function Examples() {
   return (
-    <section className="relative bg-void py-32 sm:py-40">
+    <section className="relative py-32 sm:py-40">
       <div className="container-x">
         <Reveal>
           <p className="eyebrow mb-5">{EXAMPLES.eyebrow}</p>
@@ -21,8 +21,8 @@ export function Examples() {
                 href={item.href}
                 target="_blank"
                 rel="noreferrer"
-                className="group flex aspect-[4/3] flex-col justify-between rounded-2xl border border-hairline bg-panel/50 p-6 transition-colors duration-200 hover:border-accent/70 hover:bg-panel sm:aspect-square"
-                style={{ boxShadow: "0 18px 50px -28px rgba(0,0,0,0.7)" }}
+                className="group flex aspect-[4/3] flex-col justify-between rounded-2xl border border-hairline bg-card/75 p-6 backdrop-blur-sm transition-colors duration-200 hover:border-accent/60 hover:bg-card sm:aspect-square"
+                style={{ boxShadow: "0 18px 40px -22px rgba(23,74,96,0.28)" }}
               >
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[11px] uppercase tracking-eyebrow text-inkFaint">

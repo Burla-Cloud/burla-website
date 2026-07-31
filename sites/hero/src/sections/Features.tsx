@@ -7,7 +7,7 @@ import { easeInOutCubic, easeOutCubic } from "../lib/easing";
 
 export function Features() {
   return (
-    <section className="relative bg-void py-32 sm:py-40">
+    <section className="relative py-32 sm:py-40">
       <div className="container-x">
         <Reveal>
           <p className="eyebrow mb-5">{FEATURES.eyebrow}</p>
@@ -135,8 +135,8 @@ function Simplicity() {
 
       <Reveal y={20}>
         <div
-          className="overflow-hidden rounded-2xl border border-hairline bg-panel"
-          style={{ boxShadow: "0 24px 70px -28px rgba(0,0,0,0.85)" }}
+          className="overflow-hidden rounded-2xl border border-white/10 bg-panel"
+          style={{ boxShadow: "0 24px 50px -24px rgba(9,42,66,0.5)" }}
         >
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
             <span className="font-mono text-[11px] uppercase tracking-eyebrow text-iceFaint">
@@ -223,8 +223,8 @@ function Scale() {
       <Reveal y={20}>
         <div
           ref={panelRef}
-          className="rounded-2xl border border-hairline bg-panel px-5 py-5 sm:px-6"
-          style={{ boxShadow: "0 24px 70px -28px rgba(0,0,0,0.85)" }}
+          className="rounded-2xl border border-white/10 bg-panel px-5 py-5 sm:px-6"
+          style={{ boxShadow: "0 24px 50px -24px rgba(9,42,66,0.5)" }}
         >
           <div className="mb-4 flex items-center justify-between">
             <span className="tnum font-mono text-[11px] font-medium uppercase tracking-eyebrow text-iceFaint">

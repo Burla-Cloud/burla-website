@@ -3,7 +3,7 @@ import { FAQ } from "../content";
 
 export function Faq() {
   return (
-    <section className="relative bg-void py-32 sm:py-36">
+    <section className="relative py-32 sm:py-36">
       <div className="container-x mx-auto max-w-3xl">
         <Reveal>
           <p className="eyebrow mb-5">{FAQ.eyebrow}</p>

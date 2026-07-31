@@ -1,4 +1,5 @@
 import { Nav } from "./components/Nav";
+import { Descent, DaySky } from "./components/Sky";
 import { HeroAct } from "./sections/HeroAct";
 import { What } from "./sections/What";
 import { Examples } from "./sections/Examples";
@@ -12,11 +13,18 @@ export default function App() {
       <Nav />
       <main>
         <HeroAct />
-        <What />
-        <Examples />
-        <Features />
-        <Faq />
-        <Finale />
+        <Descent />
+        {/* Everything below the clouds lives in daylight. */}
+        <div data-day-zone className="theme-day relative text-ink">
+          <DaySky />
+          <div className="relative">
+            <What />
+            <Examples />
+            <Features />
+            <Faq />
+            <Finale />
+          </div>
+        </div>
       </main>
     </div>
   );

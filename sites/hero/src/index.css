@@ -3,6 +3,32 @@
 @tailwind utilities;
 
 @layer base {
+  /* Space theme (default). Channels are space-separated RGB for <alpha-value>. */
+  :root {
+    --c-void: 3 8 13;
+    --c-panel: 9 24 35;
+    --c-card: 9 24 35;
+    --c-ink: 244 251 253;
+    --c-ink-dim: rgba(234, 246, 250, 0.76);
+    --c-ink-faint: rgba(234, 246, 250, 0.58);
+    --c-accent: 126 203 221;
+    --c-hairline: rgba(126, 203, 221, 0.2);
+    --c-outline: rgba(126, 203, 221, 0.68);
+  }
+
+  /* Sky theme: everything below the cloud descent. Panels stay dark navy so
+     code and terminal cards keep their identity on the light page. */
+  .theme-day {
+    --c-void: 241 249 252;
+    --c-card: 255 255 255;
+    --c-ink: 9 42 56;
+    --c-ink-dim: rgba(9, 42, 56, 0.78);
+    --c-ink-faint: rgba(9, 42, 56, 0.55);
+    --c-accent: 15 117 145;
+    --c-hairline: rgba(9, 64, 86, 0.16);
+    --c-outline: rgba(15, 117, 145, 0.7);
+  }
+
   html {
     scroll-behavior: smooth;
   }
@@ -63,8 +89,9 @@
     box-shadow: 0 14px 42px -14px rgba(126, 203, 221, 0.62);
   }
 
+  /* Ghost buttons sit on a dark chip in both themes, so text stays ice. */
   .btn-ghost {
-    @apply inline-flex items-center gap-2 rounded-full border border-hairline bg-panel/70 px-6 py-3 font-mono text-sm font-medium text-ink/85 backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-ink;
+    @apply inline-flex items-center gap-2 rounded-full border border-white/15 bg-panel/80 px-6 py-3 font-mono text-sm font-medium text-ice/90 backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-ice;
   }
 
   .hairline-t {
@@ -75,7 +102,7 @@
 @layer utilities {
   .text-outline {
     color: transparent;
-    -webkit-text-stroke: 1.5px rgba(126, 203, 221, 0.68);
+    -webkit-text-stroke: 1.5px var(--c-outline);
   }
 
   /* Dark halo keeps ice type readable over the particle field. */
@@ -120,6 +147,29 @@
   }
 }
 
+/* Soft cloud puff: a blurred white ellipse. Banks are built by overlapping
+   several puffs; blur is set inline per puff. */
+.cloud {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cloud-drift {
+  animation: cloud-drift 90s ease-in-out infinite alternate;
+}
+
+@keyframes cloud-drift {
+  from {
+    transform: translateX(-2.5%);
+  }
+  to {
+    transform: translateX(2.5%);
+  }
+}
+
 /* Infinite marquee strip */
 .marquee {
   display: flex;
@@ -149,6 +199,9 @@
     animation: none;
   }
   .grain::after {
+    animation: none;
+  }
+  .cloud-drift {
     animation: none;
   }
   html {

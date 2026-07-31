@@ -4,7 +4,7 @@ import { WHAT } from "../content";
 
 export function What() {
   return (
-    <section className="relative bg-void pt-32 pb-28 sm:pt-40">
+    <section className="relative pt-24 pb-28 sm:pt-32">
       <div className="container-x">
         <Reveal>
           <p className="eyebrow mb-5">{WHAT.eyebrow}</p>
@@ -30,8 +30,8 @@ export function What() {
                 {WHAT.apiLabel}
               </p>
               <div
-                className="rounded-2xl border border-hairline bg-panel px-6 py-6 sm:px-8"
-                style={{ boxShadow: "0 22px 60px -24px rgba(0,0,0,0.78)" }}
+                className="rounded-2xl border border-white/10 bg-panel px-6 py-6 sm:px-8"
+                style={{ boxShadow: "0 24px 50px -24px rgba(9,42,66,0.5)" }}
               >
                 <pre className="overflow-x-auto font-mono text-[13px] leading-relaxed text-ice">
                   <code>

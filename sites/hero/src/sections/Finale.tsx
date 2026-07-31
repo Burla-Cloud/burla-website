@@ -4,7 +4,7 @@ import { FINALE, FOOTER, LINKS } from "../content";
 
 export function Finale() {
   return (
-    <section className="relative bg-void pt-36 sm:pt-48">
+    <section className="relative pt-36 sm:pt-48">
       <div className="container-x flex flex-col items-center text-center">
         <Reveal>
           <h2 className="h-mega">
