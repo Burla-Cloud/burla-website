@@ -71,21 +71,21 @@ export const galaxyFragment = /* glsl */ `
       density = 1.0;
     } else if (vType < 1.5) {
       lit = mix(uArmColor, uCoreColor, vSeed * 0.5);
-      density = 0.9;
+      density = 1.0;
     } else if (vType < 2.5) {
       lit = mix(uDustColor, uArmColor, vSeed * 0.3);
-      density = 0.45;
+      density = 0.62;
     } else {
       // far starfield
       lit = mix(uDustColor, uArmColor, 0.2);
-      density = 0.3;
+      density = 0.5;
     }
 
     float act = clamp(vAct, 0.0, 1.0);
     vec3 color = mix(uEmberColor, lit, act);
     // Wavefront: snap to ice-bright blue and force full presence.
     color = mix(color, uFlashColor, clamp(vFront, 0.0, 1.0) * 0.85);
-    float alpha = disc * mix(0.06, 0.96, act) * density;
+    float alpha = disc * mix(0.09, 1.0, act) * density;
     alpha = min(1.0, alpha + vFront * 0.6 * disc);
 
     gl_FragColor = vec4(color, alpha);

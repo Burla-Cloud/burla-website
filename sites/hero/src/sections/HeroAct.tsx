@@ -100,8 +100,8 @@ export function HeroAct() {
         />
 
         {/* Legibility scrims */}
-        <div className="pointer-events-none absolute inset-0 z-[5] bg-[radial-gradient(60%_52%_at_50%_44%,rgba(3,8,13,0.58),rgba(3,8,13,0.08)_64%,rgba(3,8,13,0)_78%)]" />
-        <div className="pointer-events-none absolute inset-0 z-[5] bg-gradient-to-b from-void/85 via-transparent to-void/95" />
+        <div className="pointer-events-none absolute inset-0 z-[5] bg-[radial-gradient(60%_52%_at_50%_44%,rgba(3,8,13,0.36),rgba(3,8,13,0.05)_64%,rgba(3,8,13,0)_78%)]" />
+        <div className="pointer-events-none absolute inset-0 z-[5] bg-gradient-to-b from-void/60 via-transparent to-void/80" />
 
         {reduced ? (
           <ResolvePanel staticMode />
@@ -142,7 +142,7 @@ export function HeroAct() {
             >
               <div
                 aria-hidden
-                className="absolute inset-[8%] bg-[radial-gradient(ellipse_at_center,rgba(3,8,13,0.84),rgba(3,8,13,0.55)_48%,transparent_74%)]"
+                className="absolute inset-[8%] bg-[radial-gradient(ellipse_at_center,rgba(3,8,13,0.62),rgba(3,8,13,0.32)_48%,transparent_74%)]"
               />
               <h2 className="h-mega relative text-shadow-soft">
                 <span className="block text-outline">{ZOOM.phaseB[0]}</span>
@@ -196,7 +196,7 @@ function ResolvePanel({ staticMode = false }: { staticMode?: boolean }) {
       {/* Local scrim so copy stays readable over the dense galaxy core */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(58%_64%_at_50%_52%,rgba(3,8,13,0.94),rgba(3,8,13,0.72)_58%,rgba(3,8,13,0.18)_82%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_54%_at_50%_50%,rgba(3,8,13,0.8),rgba(3,8,13,0.42)_58%,rgba(3,8,13,0)_80%)]"
       />
       <div className={`relative ${staticMode ? "" : "pointer-events-auto"}`}>
         <p className="eyebrow mb-6">{ZOOM.resolve.kicker}</p>

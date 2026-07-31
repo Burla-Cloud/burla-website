@@ -155,7 +155,7 @@ export function Galaxy({ progress, reducedMotion }: Props) {
     const uniforms = {
       uTime: { value: 0 },
       uIgnite: { value: 0 },
-      uSize: { value: 2.3 },
+      uSize: { value: 2.7 },
       uPixelRatio: { value: Math.min(window.devicePixelRatio, 1.75) },
       uCoreColor: { value: col("#EAF6FA") },
       uArmColor: { value: col("#7ECBDD") },
