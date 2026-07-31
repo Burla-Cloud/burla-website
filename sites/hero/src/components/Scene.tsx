@@ -1,26 +1,27 @@
 import { Canvas } from "@react-three/fiber";
-import { CosmicField } from "../three/CosmicField";
-import { CameraRig } from "../three/CameraRig";
-import { Effects } from "../three/Effects";
+import { Galaxy } from "../three/Galaxy";
+import { ZoomRig } from "../three/ZoomRig";
 
-const BACKGROUND = "#04070a";
+const BACKGROUND = "#03080D";
 
 type Props = {
+  progress: { current: number };
   reducedMotion: boolean;
+  active: boolean;
 };
 
-export function Scene({ reducedMotion }: Props) {
+export function Scene({ progress, reducedMotion, active }: Props) {
   return (
     <Canvas
       className="!absolute inset-0"
-      dpr={[1, 2]}
+      dpr={[1, 1.75]}
+      frameloop={active ? "always" : "never"}
       gl={{ antialias: false, powerPreference: "high-performance" }}
-      camera={{ position: [0, 0.1, 1.7], fov: 42, near: 0.1, far: 220 }}
+      camera={{ position: [0, 1.3, 7], fov: 42, near: 0.1, far: 320 }}
     >
       <color attach="background" args={[BACKGROUND]} />
-      <CosmicField reducedMotion={reducedMotion} background={BACKGROUND} />
-      <CameraRig reducedMotion={reducedMotion} />
-      <Effects reducedMotion={reducedMotion} />
+      <Galaxy progress={progress} reducedMotion={reducedMotion} />
+      <ZoomRig progress={progress} reducedMotion={reducedMotion} />
     </Canvas>
   );
 }

@@ -1,16 +1,21 @@
 # Cosmic Hero
 
-Cinematic landing hero for Burla: a three.js cosmic zoom behind "One function call. Ten thousand machines." Hero copy lives in `src/content.ts`.
+Full scrollytelling landing page for Burla: "The simplest way to process massive amounts of data."
+
+A scroll-driven WebGL zoom opens on one line of Python and pulls back into a galaxy of 10,000 machines, then resolves into a narrative page: what Burla is and how it works (`pip install burla` + the one-function API), a 12-tile grid of real example jobs linked to the docs, three feature blocks (efficiency with the $14.20/$32/$48 cost bars, simplicity + agent rules snippet, speed/scale with an igniting VM wall), FAQ, and final CTA.
 
 **Live: [burla-cloud.github.io/burla-website/hero](https://burla-cloud.github.io/burla-website/hero/)**
 
-Originally built on the `landing-hero` branch of [`Burla-Cloud/burla`](https://github.com/Burla-Cloud/burla) as a standalone Vite app.
+All copy and demo numbers live in `src/content.ts`. The galaxy is `src/three/Galaxy.tsx` (instanced gl.POINTS + custom shaders); the scroll choreography is `src/sections/HeroAct.tsx`.
+
+Note: hero overlay opacity/transforms are written to the DOM imperatively from one scroll subscription. Do not move them back into framer-motion `style` MotionValues; framer converts scroll-linked styles into WAAPI animations, which desync with a `position: sticky` target.
 
 ## Stack
 
 - Vite + React 19 + TypeScript
-- three.js via @react-three/fiber, drei, and postprocessing
+- three.js via @react-three/fiber and @react-three/postprocessing
 - Tailwind CSS, Framer Motion
+- Fonts: Bricolage Grotesque + IBM Plex Mono
 
 ## Local dev
 

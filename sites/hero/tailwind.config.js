@@ -4,16 +4,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        burla: {
-          cyan: "#7ECBDD",
-          glow: "#bfeaf2",
-          deep: "#3B5A64",
-          ink: "#04070a",
-        },
+        void: "#03080D",
+        panel: "#091823",
+        ink: "#F4FBFD",
+        inkDim: "rgba(234,246,250,0.76)",
+        inkFaint: "rgba(234,246,250,0.58)",
+        ice: "#EAF6FA",
+        iceDim: "rgba(234,246,250,0.72)",
+        iceFaint: "rgba(234,246,250,0.55)",
+        accent: "#7ECBDD",
+        cyan: "#7ECBDD",
+        blue: "#2A7F96",
+        coral: "#FF806C",
+        hairline: "rgba(126,203,221,0.20)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+        display: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],
+        mono: ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      letterSpacing: {
+        eyebrow: "0.28em",
       },
     },
   },

@@ -3,32 +3,177 @@
 @tailwind utilities;
 
 @layer base {
-  html,
-  body,
-  #root {
-    height: 100%;
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
     margin: 0;
-    background: #04070a;
-    color: #fff;
-    font-family: "Inter", system-ui, sans-serif;
+    background: #03080d;
+    color: #f4fbfd;
+    color-scheme: dark;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    overflow: hidden;
+    overflow-x: hidden;
   }
 
   ::selection {
-    background: rgba(126, 203, 221, 0.28);
+    background: #7ecbdd;
+    color: #03080d;
+  }
+
+  :focus-visible {
+    outline: 2px solid #7ecbdd;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase tracking-eyebrow text-inkFaint;
+  }
+
+  .container-x {
+    @apply mx-auto w-full max-w-[1200px] px-6 sm:px-10;
+  }
+
+  /* Display headline scale. Tight leading, aggressive tracking. */
+  .h-mega {
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    font-size: clamp(2.9rem, 8.5vw, 8rem);
+  }
+
+  .h-big {
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    font-size: clamp(2.2rem, 5.4vw, 4.6rem);
+  }
+
+  .lead {
+    @apply text-base leading-relaxed text-inkDim sm:text-lg;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 font-mono text-sm font-semibold text-void transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98];
+    box-shadow: 0 14px 42px -14px rgba(126, 203, 221, 0.62);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-full border border-hairline bg-panel/70 px-6 py-3 font-mono text-sm font-medium text-ink/85 backdrop-blur-sm transition-colors hover:border-accent/60 hover:text-ink;
+  }
+
+  .hairline-t {
+    border-top: 1px solid rgba(126, 203, 221, 0.2);
   }
 }
 
 @layer utilities {
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgba(126, 203, 221, 0.68);
+  }
+
+  /* Dark halo keeps ice type readable over the particle field. */
   .text-shadow-soft {
     text-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.55),
-      0 2px 30px rgba(0, 0, 0, 0.5);
+      0 2px 3px rgba(0, 0, 0, 0.85),
+      0 0 28px rgba(3, 8, 13, 0.92);
   }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Film grain over everything. Pure texture, no interaction. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  animation: grain-shift 0.9s steps(4) infinite;
+}
+
+@keyframes grain-shift {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-2%, 3%);
+  }
+  50% {
+    transform: translate(3%, -2%);
+  }
+  75% {
+    transform: translate(-3%, -3%);
+  }
+  100% {
+    transform: translate(2%, 2%);
+  }
+}
+
+/* Infinite marquee strip */
+.marquee {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+}
+
+.marquee-track {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 100%;
+  gap: 0;
+  animation: marquee-scroll 36s linear infinite;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+  .grain::after {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Blinking terminal cursor (lives on dark navy panels) */
+@keyframes cursor-blink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.cursor-block {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: #7ecbdd;
+  animation: cursor-blink 1.05s steps(1) infinite;
 }
