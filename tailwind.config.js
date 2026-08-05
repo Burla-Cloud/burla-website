@@ -23,7 +23,7 @@ export default {
         hairline: "var(--c-hairline)",
       },
       fontFamily: {
-        display: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],
+        display: ['"Inter"', "system-ui", "sans-serif"],
         mono: ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
         // The brand wordmark font, used only by the nav logo lockup.
         logo: ["Poppins", "system-ui", "sans-serif"],

@@ -1,6 +1,6 @@
 /* Docs article styling. Same palette as the landing page theme variables:
    void #03080D, panel #091823, ink #F4FBFD, accent #7ECBDD, coral #FF806C.
-   Headings/body in Bricolage Grotesque, code in IBM Plex Mono. */
+   Headings/body in Inter, code in IBM Plex Mono. */
 
 :root {
   /* Modal's outer grid: minmax(16rem, 2fr) + minmax(0, 8fr).
@@ -62,7 +62,7 @@
 .doc-prose h2,
 .doc-prose h3,
 .doc-prose h4 {
-  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   color: #f4fbfd;
   text-wrap: balance;
 }
@@ -583,7 +583,7 @@
 
 .doc-card-title {
   display: block;
-  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 15.5px;
   font-weight: 500;
   line-height: 1.35;

@@ -1,5 +1,5 @@
 import { PipInstall } from "../components/PipInstall";
-import { HERO, LINKS } from "../content";
+import { HERO } from "../content";
 
 // Act I. One screen: the brand statement in front of the fully-lit galaxy.
 // Scrolling on lifts the galaxy up and out of frame (driven by the descent ref
@@ -33,11 +33,8 @@ export function HeroAct() {
           >
             {HERO.sub}
           </p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="mt-9 flex justify-center">
             <PipInstall size="big" />
-            <a href={LINKS.github} target="_blank" rel="noreferrer" className="btn-ghost">
-              Star on GitHub
-            </a>
           </div>
         </div>
       </div>

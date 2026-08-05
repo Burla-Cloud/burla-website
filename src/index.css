@@ -25,7 +25,7 @@
     background: #03080d;
     color: #f4fbfd;
     color-scheme: dark;
-    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -54,16 +54,18 @@
 
   /* Display headline scale. Tight leading, aggressive tracking. */
   .h-mega {
-    font-weight: 800;
+    /* 830 on the variable axis matches the optical density of the original
+       ExtraBold headline (800 reads lighter, 850 heavier). */
+    font-weight: 830;
     line-height: 0.92;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
     font-size: clamp(2.9rem, 8.5vw, 8rem);
   }
 
   .h-big {
-    font-weight: 800;
+    font-weight: 830;
     line-height: 0.95;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     font-size: clamp(2.2rem, 5.4vw, 4.6rem);
   }
 
