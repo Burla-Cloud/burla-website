@@ -2,168 +2,164 @@
 
 Burla's CLI contains the following commands:
 
-* [`burla install`](/docs/cli-reference#burla-install) Deploy self-hosted Burla in your Google Cloud project.
-* [`burla login`](/docs/cli-reference#burla-login) Authorize your computer execute code in your Burla instance.
+* [`burla deploy`](/docs/cli-reference#burla-deploy) Deploy (or update) an always-on Burla cluster your team can share.
+* [`burla dashboard`](/docs/cli-reference#burla-dashboard) Open the dashboard for the cluster this machine uses.
+* [`burla login`](/docs/cli-reference#burla-login) Authorize your computer to use a deployed Burla cluster.
+* [`burla config`](/docs/cli-reference#burla-config) View or set which cloud Burla boots VMs in.
 
-The global arg `--help` can be placed after any command or command group to see CLI documentation.
+The global arg `--help` can be placed after any command to see CLI documentation.\
+Run `burla --version` to print the installed client version.
 
 ***
 
-### `burla install`
+### `burla deploy`
 
-Deploy a self-hosted Burla instance in your current Google Cloud Project.\
-Running `burla install` multiple times will update the existing installation with the latest version.
+Burla needs no deployment to run: `remote_parallel_map` and `burla dashboard` run the cluster coordinator on your own machine. `burla deploy` moves that coordinator, its dashboard, and its job history onto one small always-on VM in your cloud account, so the cluster stays up for your whole team.
+
+```bash
+burla deploy              # deploys into the cloud selected by `burla config`
+burla deploy --cloud=gcp  # or aws, azure: override the configured cloud once
+```
 
 **Description:**
 
-Installs Burla inside the Google Cloud project that your [gcloud CLI](https://cloud.google.com/sdk/gcloud) is currently pointing to.\
-For a more user-friendly installation guide see: [Installation: Self-Hosted](/docs/get-started)
+* Your first deploy copies the job history and settings from your machine's coordinator, so the deployed dashboard picks up where your local one left off.
+* Running `burla deploy` again updates an existing deployment in place. The head VM keeps its job history and settings, so this is also how you upgrade to a new Burla version.
+* After a successful deploy your machine is pointed at the new cluster automatically. Teammates connect by running [`burla login`](/docs/cli-reference#burla-login).
 
-To view your current gcloud project run: `gcloud config get project`\
-To change your current gcloud project run: `gcloud config set project <desired-project-id>`
+{% hint style="info" %}
+`--cloud` defaults to whichever cloud [`burla config`](/docs/cli-reference#burla-config) selects (AWS if you've never set it). Either way, Burla deploys into the account your CLI is pointed at: your active AWS account and region, gcloud project, or Azure subscription.
+{% endhint %}
+
+**What it creates:**
+
+<details>
+
+<summary>On Google Cloud</summary>
+
+* Enables the `compute`, `cloudresourcemanager`, `storage`, and `iamcredentials` APIs.
+* A bucket named `<project-id>-burla-shared-workspace`: the shared workspace every node mounts.
+* A `burla-main-service` service account for the head VM, granted `roles/compute.instanceAdmin.v1`, `roles/storage.objectUser`, and `roles/artifactregistry.reader`, plus `roles/iam.serviceAccountTokenCreator` on itself and `roles/iam.serviceAccountUser` on the default compute service account.
+* A static IP and one always-on `e2-small` VM named `burla-main-service` (in `us-central1`) running the coordinator and dashboard.
+
+</details>
+
+<details>
+
+<summary>On AWS</summary>
+
+* A bucket named `aws-<account-id>-burla-shared-workspace`: the shared workspace every node mounts.
+* Two IAM roles with instance profiles: `burla-main-service` (boot and delete nodes, pull images from ECR, read/write the workspace bucket) and `burla-node` (read/write the workspace bucket only).
+* Security groups for the head instance and nodes.
+* A reusable node machine image, built once by a temporary builder instance that deletes itself afterward.
+* An Elastic IP and one always-on `t3.small` instance named `burla-main-service` running the coordinator and dashboard.
+
+</details>
+
+<details>
+
+<summary>On Microsoft Azure</summary>
+
+* A storage account and container for the shared workspace every node mounts.
+* A managed identity for the head VM, with roles to boot and delete VMs and to read/write the workspace container.
+* One small always-on VM named `burla-main-service` running the coordinator and dashboard, with a static public IP.
+
+</details>
+
+No inbound firewall rules are ever opened in your account: the head VM and nodes dial out to Burla's relay, and your dashboard is served at `https://head--<project-id>.relay.burla.dev`.
 
 **Prerequisites:**
 
-* Have the [gcloud CLI](https://cloud.google.com/sdk/gcloud) installed ([how do I install the gcloud CLI?](https://cloud.google.com/sdk/docs/install)).
-* Be logged in to the [gcloud CLI](https://cloud.google.com/sdk/gcloud) ([how do I log in?](https://cloud.google.com/sdk/docs/authorizing#user-account))\
-  (`gcloud auth login` & `gcloud auth application-default login`)
-* Have a Google Cloud user account with the minimum required permissions to install Burla.\
-  **Or:** Just run `burla install`, if you're missing any permissions it will tell you which ones!
-
-Here is the set of permissions you'll need to run `burla install`:\
-Any of these three permission set's will work.
-
-<details>
-
-<summary>Simplest possible permissions</summary>
-
-Burla can be installed by users having the project editor (`roles/editor`) role.
-
-</details>
-
-<details>
-
-<summary>Service admin based permissions (more specific)</summary>
-
-Burla can be installed by users having the following generic roles:
-
-1. Service Usage Admin (`roles/serviceusage.serviceUsageAdmin`)
-2. Cloud Run Admin (`roles/run.admin`)
-3. Compute Network Admin (`roles/compute.networkAdmin`)
-4. Secret Manager Admin (`roles/secretmanager.admin`)
-5. Service Account Admin (`roles/iam.serviceAccountAdmin`)
-6. Service Account Key Admin (`roles/iam.serviceAccountKeyAdmin`)
-7. Project IAM Admin (`roles/resourcemanager.projectIamAdmin`)
-8. Firestore / Datastore Owner (`roles/datastore.owner`)
-
-</details>
-
-<details>
-
-<summary>Exact minimum required permissions (very specific) (IAM role)</summary>
-
-Below is an IAM role definition for this minimum installer permission set.
-
-To create this IAM role, put the lower text in a file called `burla-installer-role.yaml`.\
-Then run the following command:
-
-```bash
-PROJECT_ID="$(gcloud config get-value project)"
-gcloud iam roles create burlaInstaller \
-  --project "$PROJECT_ID" \
-  --file burla-installer-role.yaml
-```
-
-Contents of `burla-installer-role.yaml`:
-
-```yaml
-title: "Burla Installer"
-description: "Minimum permissions required to install Burla"
-stage: "GA"
-includedPermissions:
-  # Enable required APIs
-  - serviceusage.services.enable
-  - serviceusage.services.get
-  - serviceusage.services.list
-
-  # Read project number + set project IAM bindings
-  - resourcemanager.projects.get
-  - resourcemanager.projects.getIamPolicy
-  - resourcemanager.projects.setIamPolicy
-
-  # Firewall rule for cluster nodes
-  - compute.firewalls.create
-  - compute.firewalls.get
-  - compute.firewalls.list
-
-  # Create + manage bucket
-  - storage.buckets.create
-  - storage.buckets.get
-  - storage.buckets.list
-  - storage.buckets.update
-
-  # Secret for cluster token + IAM bindings + versions
-  - secretmanager.secrets.create
-  - secretmanager.secrets.get
-  - secretmanager.secrets.list
-  - secretmanager.secrets.getIamPolicy
-  - secretmanager.secrets.setIamPolicy
-  - secretmanager.versions.add
-  - secretmanager.versions.access
-
-  # Create service accounts, grant them roles, rotate keys, and use them for Cloud Run deploy
-  - iam.serviceAccounts.create
-  - iam.serviceAccounts.get
-  - iam.serviceAccounts.list
-  - iam.serviceAccounts.getIamPolicy
-  - iam.serviceAccounts.setIamPolicy
-  - iam.serviceAccounts.actAs
-  - iam.serviceAccountKeys.create
-  - iam.serviceAccountKeys.list
-  - iam.serviceAccountKeys.delete
-
-  # Create Firestore database + write initial config doc via Firestore client
-  - datastore.databases.create
-  - datastore.databases.get
-  - datastore.entities.create
-  - datastore.entities.update
-  - datastore.entities.get
-
-  # Deploy and configure Cloud Run service
-  - run.services.create
-  - run.services.get
-  - run.services.list
-  - run.services.update
-  - run.services.getIamPolicy
-  - run.services.setIamPolicy
-```
-
-</details>
-
-These permissions are only required to **install** Burla, they are **not** granted to the Burla service itself.\
-Upon install Burla creates a service account for itself having [this minimum set of permissions](https://github.com/Burla-Cloud/burla/blob/2e027b57c9e9309587b89a1024c84851998304db/client/src/burla/_install.py#L427-L453).
+Deploying is the only Burla command that needs more than permission to boot VMs.
 
 {% hint style="info" %}
-On install, your Google account (the one you are currently logged in to `gcloud` with) is set as the only account authorized to access this new Burla deployment.
+If you're missing permissions, run the command anyway: it will fail showing exactly which command was denied. Email jake@burla.dev if you need any help!
 {% endhint %}
 
-We encourage you to check out [\_install.py](https://github.com/Burla-Cloud/burla/blob/main/client/src/burla/_install.py) in the client for even more specific installation details.
+<details>
+
+<summary>What permissions do I need to run <code>burla deploy</code> on Google Cloud?</summary>
+
+You need permission to run these `gcloud` commands (project owner covers all of them):
+
+* `gcloud services enable ...`
+* `gcloud storage buckets create / update ...`
+* `gcloud iam service-accounts create ...`
+* `gcloud projects add-iam-policy-binding ...`
+* `gcloud iam service-accounts add-iam-policy-binding ...`
+* `gcloud compute addresses create ...`
+* `gcloud compute instances create / start / stop ...`
+
+</details>
+
+<details>
+
+<summary>What permissions do I need to run <code>burla deploy</code> on AWS?</summary>
+
+You need permission to run these `aws` commands (`AdministratorAccess` covers all of them):
+
+* `aws s3api create-bucket / put-bucket-cors ...`
+* `aws iam create-role / put-role-policy / attach-role-policy / create-instance-profile ...`
+* `aws ec2 create-security-group / authorize-security-group-ingress ...`
+* `aws ec2 run-instances / create-image / terminate-instances ...`
+* `aws ec2 allocate-address / associate-address ...`
+* `aws ssm send-command ...`
+
+</details>
+
+<details>
+
+<summary>What permissions do I need to run <code>burla deploy</code> on Microsoft Azure?</summary>
+
+You need permission to run these `az` commands (subscription `Owner` covers all of them):
+
+* `az storage account create / container create ...`
+* `az identity create ...`
+* `az role assignment create ...`
+* `az network public-ip create / nsg create ...`
+* `az vm create / start / stop ...`
+
+</details>
+
+***
+
+### `burla dashboard`
+
+Open the dashboard for whichever cluster this machine uses.
+
+**Description:**
+
+* If this machine is connected to a deployed cluster (you ran `burla deploy` or `burla login`), opens that cluster's dashboard.
+* Otherwise, if a coordinator is already running on this machine (for example because you recently called `remote_parallel_map`), opens its dashboard.
+* Otherwise, starts a coordinator in the foreground, streams its logs, and opens its dashboard in your browser. Press Ctrl-C to stop it.
 
 ***
 
 ### `burla login`
 
-Connects your computer to the Burla cluster you most recently logged into in your browser.\
-Authorizes your machine to call `remote_parallel_map` on this cluster.
+Authorize this machine to run code on a deployed Burla cluster.
 
 **Description:**
 
-Launches the "Authorize this Machine" page in your default web browser.
+Opens the cluster login page in your default browser. Once you finish signing in, an auth token is sent back to this machine and saved in `burla_credentials.json`, stored in your operating system's standard user config directory. From then on `remote_parallel_map` and `burla dashboard` use the deployed cluster.
 
-If there is no auth-cookie (you have not yet logged into the dashboard), throws simple error requesting you login to your cluster dashboard first.
+Pass `--no-browser` to print the login URL instead of opening a browser (this happens automatically inside Google Colab).
 
-When the "Authorize" button is hit, a new auth token is created and sent to your machine.
+You only need `burla login` to connect to a cluster someone else deployed: `burla deploy` connects the deployer's machine automatically.
 
-This token is saved in the text file `burla_credentials.json`. This file is stored in your operating system's recommended user data directory which is determined using the [appdirs](https://github.com/ActiveState/appdirs) python library.
+***
 
-This token is refreshed each time the `burla login` is run, or certain amount of time passes.
+### `burla config`
+
+View or set which cloud Burla boots VMs in.
+
+```bash
+burla config set cloud gcp   # or: aws, azure
+burla config get cloud
+```
+
+**Description:**
+
+* The default is `aws`: Burla uses the account and region your AWS CLI is pointed at. With `gcp` it uses your active gcloud project, and with `azure` your active Azure subscription.
+* Every Burla command follows this setting, including `remote_parallel_map` and `burla deploy` (which can override it once with `--cloud`).
+* Setting the `BURLA_CLOUD` environment variable overrides this setting for a single shell.

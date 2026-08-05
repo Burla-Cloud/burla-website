@@ -132,8 +132,10 @@ export const DOCS_TABS: DocTab[] = [
         label: "CLI Reference",
         route: "/docs/cli-reference",
         items: [
-          { label: "burla install", to: "/docs/cli-reference#burla-install" },
+          { label: "burla deploy", to: "/docs/cli-reference#burla-deploy" },
+          { label: "burla dashboard", to: "/docs/cli-reference#burla-dashboard" },
           { label: "burla login", to: "/docs/cli-reference#burla-login" },
+          { label: "burla config", to: "/docs/cli-reference#burla-config" },
         ],
       },
     ],
