@@ -1,4 +1,4 @@
-name: Deploy sites to GitHub Pages
+name: Deploy site to GitHub Pages
 
 on:
   push:
@@ -20,62 +20,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout user-docs (content source for landing site)
-        uses: actions/checkout@v4
-        with:
-          repository: Burla-Cloud/user-docs
-          path: user-docs
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: |
-            sites/landing/package-lock.json
-            sites/gtm/package-lock.json
-            sites/agents/package-lock.json
-            sites/hero/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Build landing site
-        working-directory: sites/landing
+      - name: Build site
         env:
-          SITE_URL: https://burla-cloud.github.io
-          SITE_BASE_PATH: /burla-website/landing
-          USER_DOCS_PATH: ${{ github.workspace }}/user-docs
-          USER_DOCS_SUMMARY_PATH: ${{ github.workspace }}/user-docs/SUMMARY.md
-        run: |
-          npm ci
-          ln -snf "${{ github.workspace }}/user-docs/.gitbook/assets" public/gitbook-assets
-          npm run build
-
-      - name: Build gtm site
-        working-directory: sites/gtm
+          VITE_BASE: /burla-website/
         run: |
           npm ci
           npm run build
 
-      - name: Build agents site
-        working-directory: sites/agents
+      - name: Assemble site
         run: |
-          npm ci
-          npm run build
-
-      - name: Build hero site
-        working-directory: sites/hero
-        env:
-          VITE_BASE: /burla-website/hero/
-        run: |
-          npm ci
-          npm run build
-
-      - name: Assemble combined site
-        run: |
-          mkdir _site
-          cp index.html _site/index.html
-          cp -R sites/landing/dist _site/landing
-          cp -R sites/gtm/dist _site/gtm
-          cp -R sites/agents/dist _site/agents
-          cp -R sites/hero/dist _site/hero
+          cp -R dist _site
 
       - uses: actions/configure-pages@v5
 

@@ -1,0 +1,237 @@
+export type ExampleCard = {
+  route: string;
+  title: string;
+  description: string;
+  icon: string;
+};
+
+export type ExampleCategory = {
+  label: string;
+  description: string;
+  legacyRoute: string;
+  examples: [ExampleCard, ...ExampleCard[]];
+};
+
+export const BASICS_CATEGORY: ExampleCategory = {
+  label: "Basics",
+  description: "The core patterns for structuring, running, and combining Burla work.",
+  legacyRoute: "/docs/all-examples/basic-examples",
+  examples: [
+    {
+      route: "/docs/all-examples/basic-examples/read-and-write-gcs-files",
+      title: "Read/Write Files to Cloud Storage",
+      description:
+        "Read and write shared files through Google Cloud Storage. Keep worker results available to every task.",
+      icon: "cloud",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/use-custom-docker-images-and-gpus",
+      title: "Use custom Docker images & GPUs",
+      description:
+        "Run workers with custom Docker images and GPUs. Bring native tools and CUDA dependencies.",
+      icon: "gpu",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/run-python-in-the-background",
+      title: "Run jobs in the background",
+      description:
+        "Launch long jobs without holding a local process open. Reconnect later to inspect progress.",
+      icon: "clock",
+    },
+    {
+      route:
+        "/docs/all-examples/basic-examples/limit-parallelism-for-apis-databases-and-websites",
+      title: "Limit parallelism for APIs or databases",
+      description:
+        "Cap concurrency around external services. Protect APIs, databases, and websites from overload.",
+      icon: "sliders",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/combine-many-results-files-into-one-map-reduce",
+      title: "Combine many results/files into one",
+      description:
+        "Reduce many worker outputs into one result. Use a simple map-reduce pattern.",
+      icon: "merge",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/choose-how-to-split-your-work",
+      title: "Decide how to split your work",
+      description:
+        "Choose the right input unit for parallel work. Split by files, records, or chunks.",
+      icon: "route",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/process-thousands-of-files-quickly",
+      title: "Process thousands of files",
+      description:
+        "Process one file per worker at massive scale. Combine compact reports afterward.",
+      icon: "parquet",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/process-one-giant-file-quickly",
+      title: "Process one giant file",
+      description:
+        "Stream a giant file in parallel chunks. Merge each chunk's result.",
+      icon: "spiral",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/process-data-in-your-database-quickly",
+      title: "Process database rows",
+      description:
+        "Process database rows across many workers. Avoid building a custom queue.",
+      icon: "database",
+    },
+  ],
+};
+
+export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
+  {
+    label: "ML, Embeddings & Search",
+    description: "GPU embeddings, batch inference, model tuning, and semantic search.",
+    legacyRoute: "/docs/all-examples/ml-embeddings-and-search",
+    examples: [
+      {
+        route: "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo",
+        title: "Embed 50K Wikipedia articles",
+        description:
+          "Generate Wikipedia embeddings across A100 workers. Build a searchable index when the job completes.",
+        icon: "gpu",
+      },
+      {
+        route: "/docs/all-examples/ml-embeddings-and-search/parallel-hyperparameter-tuning",
+        title: "Tune XGBoost on 1,000 CPUs",
+        description:
+          "Evaluate a large hyperparameter grid in parallel. Keep the best model and its metrics.",
+        icon: "sliders",
+      },
+      {
+        route: "/docs/all-examples/ml-embeddings-and-search/ml-inference-batch",
+        title: "Run batch LLM inference",
+        description:
+          "Run offline model inference as a distributed job. Avoid maintaining an endpoint for batch work.",
+        icon: "spiral",
+      },
+      {
+        route: "/docs/all-examples/ml-embeddings-and-search/met-weirdest-art",
+        title: "Search 192K artworks with CLIP",
+        description:
+          "Embed every available Met artwork with CLIP. Search the collection by visual meaning.",
+        icon: "star",
+      },
+    ],
+  },
+  {
+    label: "Large-Scale Data Processing",
+    description: "High-throughput scans, indexing, summarization, and dataframe work.",
+    legacyRoute: "/docs/all-examples/data-processing-examples",
+    examples: [
+      {
+        route: "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods",
+        title: "Scan 2.76B NYC taxi trips",
+        description:
+          "Scan every monthly taxi dataset in parallel. Find neighborhoods whose activity disappeared.",
+        icon: "route",
+      },
+      {
+        route: "/docs/all-examples/data-processing-examples/world-photo-index",
+        title: "Map geotagged Flickr photos",
+        description:
+          "Index a global archive of geotagged photos. Turn billions of coordinates into a browsable map.",
+        icon: "pin",
+      },
+      {
+        route: "/docs/all-examples/data-processing-examples/github-repo-summarizer",
+        title: "Summarize 1M GitHub READMEs",
+        description:
+          "Score a million README files with inspectable rules. Produce useful category summaries without an LLM.",
+        icon: "code",
+      },
+      {
+        route: "/docs/all-examples/data-processing-examples/parquet-parallel",
+        title: "Audit 5,000 Parquet files",
+        description:
+          "Inspect every Parquet shard in parallel. Combine schema and quality findings into one report.",
+        icon: "parquet",
+      },
+      {
+        route: "/docs/all-examples/data-processing-examples/pandas-apply-parallel",
+        title: "Parallelize pandas apply",
+        description:
+          "Keep a familiar pandas transformation. Distribute it across a dataset that no longer fits one machine.",
+        icon: "database",
+      },
+    ],
+  },
+  {
+    label: "Production Data Workflows",
+    description: "Repeatable ETL, backfills, scraping, and simulation jobs.",
+    legacyRoute: "/docs/all-examples/production-data-jobs",
+    examples: [
+      {
+        route: "/docs/all-examples/production-data-jobs/python-etl-no-airflow",
+        title: "ETL 10K S3 files to Postgres",
+        description:
+          "Transform a large file drop into database rows. Run the workflow without adopting an orchestrator.",
+        icon: "database",
+      },
+      {
+        route: "/docs/all-examples/production-data-jobs/image-dataset-resize",
+        title: "Resize an image corpus",
+        description:
+          "Resize an entire image dataset in parallel. Write training-ready outputs back to shared storage.",
+        icon: "image",
+      },
+      {
+        route: "/docs/all-examples/production-data-jobs/rate-limited-api-requests",
+        title: "Run a 2M-user API backfill",
+        description:
+          "Backfill millions of records through a rate-limited API. Bound concurrency without giving up parallelism.",
+        icon: "sliders",
+      },
+      {
+        route: "/docs/all-examples/production-data-jobs/parallel-web-scraping",
+        title: "Scrape 1M web pages",
+        description:
+          "Fetch a million pages across many workers. Retry failures and preserve incremental results.",
+        icon: "globe",
+      },
+      {
+        route: "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
+        title: "Run 1B option simulations",
+        description:
+          "Distribute a billion independent market simulations. Reduce the outcomes into one risk estimate.",
+        icon: "dice",
+      },
+    ],
+  },
+  {
+    label: "Scientific & Geospatial Computing",
+    description: "Bioinformatics, climate, and raster workloads at full-dataset scale.",
+    legacyRoute: "/docs/all-examples/scientific-and-geospatial-work",
+    examples: [
+      {
+        route: "/docs/all-examples/scientific-and-geospatial-work/bioinformatics-alignment",
+        title: "Align every FASTQ sample",
+        description:
+          "Align sequencing samples in parallel with native tools. Keep each sample isolated and reproducible.",
+        icon: "helix",
+      },
+      {
+        route: "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",
+        title: "Find NOAA's rainiest day",
+        description:
+          "Scan every NOAA annual weather file. Reduce decades of station readings to the wettest day.",
+        icon: "raindrop",
+      },
+      {
+        route: "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing",
+        title: "NDVI for 2K Sentinel tiles",
+        description:
+          "Process Sentinel raster tiles with GDAL in parallel. Produce an NDVI output for every scene.",
+        icon: "raster",
+      },
+    ],
+  },
+];
+
+export const ALL_EXAMPLE_CATEGORIES = [BASICS_CATEGORY, ...EXAMPLE_CATEGORIES];

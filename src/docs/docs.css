@@ -1,0 +1,604 @@
+/* Docs article styling. Same palette as the landing page theme variables:
+   void #03080D, panel #091823, ink #F4FBFD, accent #7ECBDD, coral #FF806C.
+   Headings/body in Bricolage Grotesque, code in IBM Plex Mono. */
+
+:root {
+  /* Modal's outer grid: minmax(16rem, 2fr) + minmax(0, 8fr).
+     At 2xl it switches to a fixed 22rem sidebar. */
+  --docs-sidebar-w: max(16rem, calc((100vw - 2rem) / 5));
+}
+
+/* Keep the shared navbar controls in their normal positions while placing
+   the docs tabs independently on the content divider. */
+@media (min-width: 1240px) {
+  .docs-sections-slot {
+    position: absolute;
+    top: 50%;
+    left: calc(1rem + var(--docs-sidebar-w));
+    transform: translateY(-50%);
+  }
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --docs-sidebar-w: 22rem;
+  }
+}
+
+.doc-inline-code,
+.doc-prose :not(pre) > code {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.84em;
+  color: #eaf6fa;
+  background: rgba(9, 24, 35, 0.85);
+  border: 1px solid rgba(126, 203, 221, 0.18);
+  border-radius: 5px;
+  padding: 0.12em 0.38em;
+  white-space: nowrap;
+}
+
+.doc-prose :not(pre) > code {
+  white-space: normal; /* long paths in tables must wrap */
+}
+
+.doc-prose {
+  font-size: 16px;
+  line-height: 1.62;
+  color: rgba(234, 246, 250, 0.85);
+  overflow-wrap: break-word;
+}
+
+.doc-prose > :first-child {
+  margin-top: 0;
+}
+
+.doc-prose [id] {
+  scroll-margin-top: 120px;
+}
+
+/* ---- headings ------------------------------------------------------- */
+
+.doc-prose h1,
+.doc-prose h2,
+.doc-prose h3,
+.doc-prose h4 {
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  color: #f4fbfd;
+  text-wrap: balance;
+}
+
+.doc-prose h1 {
+  font-size: clamp(30px, 3.4vw, 36px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0 0 20px;
+}
+
+.doc-prose h2 {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin: 44px 0 14px;
+}
+
+.doc-prose h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  margin: 36px 0 12px;
+}
+
+.doc-prose h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 32px 0 10px;
+}
+
+.doc-prose h2 code,
+.doc-prose h3 code,
+.doc-prose h4 code {
+  font-size: 0.92em;
+}
+
+/* GitBook page descriptions render as a subtitle under the h1. */
+.doc-prose .doc-desc {
+  margin: -8px 0 24px;
+  font-size: 17px;
+  color: rgba(234, 246, 250, 0.68);
+}
+
+/* ---- body ----------------------------------------------------------- */
+
+.doc-prose p {
+  margin: 16px 0;
+}
+
+.doc-prose a {
+  color: #7ecbdd;
+  text-decoration: underline;
+  text-decoration-color: rgba(126, 203, 221, 0.4);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+
+.doc-prose a:hover {
+  text-decoration-color: #7ecbdd;
+}
+
+.doc-prose strong {
+  color: #f4fbfd;
+  font-weight: 600;
+}
+
+.doc-prose ul,
+.doc-prose ol {
+  margin: 16px 0;
+  padding-left: 26px;
+}
+
+.doc-prose ul {
+  list-style: disc;
+}
+
+.doc-prose ol {
+  list-style: decimal;
+}
+
+.doc-prose li {
+  margin: 7px 0;
+  padding-left: 4px;
+}
+
+.doc-prose li::marker {
+  color: rgba(126, 203, 221, 0.75);
+}
+
+.doc-prose ul ul,
+.doc-prose ol ol,
+.doc-prose ul ol,
+.doc-prose ol ul {
+  margin: 6px 0;
+}
+
+.doc-prose hr {
+  border: 0;
+  border-top: 1px solid rgba(126, 203, 221, 0.2);
+  margin: 44px 0;
+}
+
+.doc-prose blockquote {
+  margin: 20px 0;
+  padding: 2px 0 2px 18px;
+  border-left: 2px solid rgba(126, 203, 221, 0.55);
+  color: #eaf6fa;
+  font-weight: 500;
+}
+
+.doc-prose blockquote p {
+  margin: 8px 0;
+}
+
+/* ---- images / video / embeds ---------------------------------------- */
+
+.doc-prose figure {
+  margin: 28px 0;
+}
+
+.doc-prose img,
+.doc-prose video {
+  display: block;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.doc-prose figcaption {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: rgba(234, 246, 250, 0.55);
+}
+
+.doc-prose figcaption p {
+  margin: 0;
+}
+
+.doc-embed {
+  margin: 28px 0;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #091823;
+}
+
+.doc-embed iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.doc-embed-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(9, 24, 35, 0.8);
+  color: rgba(234, 246, 250, 0.9) !important;
+  text-decoration: none !important;
+  transition: border-color 150ms ease;
+}
+
+.doc-embed-link:hover {
+  border-color: rgba(126, 203, 221, 0.6);
+}
+
+/* ---- code blocks ----------------------------------------------------- */
+
+.doc-codeblock {
+  margin: 24px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: #071220;
+  overflow: hidden;
+}
+
+.doc-codeblock-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(234, 246, 250, 0.55);
+}
+
+.doc-codeblock-bar button {
+  font: inherit;
+  letter-spacing: inherit;
+  color: rgba(234, 246, 250, 0.55);
+  background: none;
+  border: 0;
+  padding: 2px 0 2px 12px;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.doc-codeblock-bar button:hover {
+  color: #7ecbdd;
+}
+
+.doc-codeblock pre {
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+}
+
+.doc-codeblock code {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #dcedf3;
+  background: none;
+  border: 0;
+  padding: 0;
+  white-space: pre;
+}
+
+/* Highlight theme tuned to the site palette. */
+.doc-prose .hljs-comment,
+.doc-prose .hljs-quote {
+  color: rgba(234, 246, 250, 0.45);
+  font-style: italic;
+}
+
+.doc-prose .hljs-keyword,
+.doc-prose .hljs-selector-tag,
+.doc-prose .hljs-literal,
+.doc-prose .hljs-type {
+  color: #7ecbdd;
+}
+
+.doc-prose .hljs-string,
+.doc-prose .hljs-regexp,
+.doc-prose .hljs-addition {
+  color: #8fd3a6;
+}
+
+.doc-prose .hljs-number,
+.doc-prose .hljs-symbol,
+.doc-prose .hljs-bullet,
+.doc-prose .hljs-meta {
+  color: #d9b678;
+}
+
+.doc-prose .hljs-title,
+.doc-prose .hljs-title.function_,
+.doc-prose .hljs-section {
+  color: #acd8ea;
+}
+
+.doc-prose .hljs-title.class_,
+.doc-prose .hljs-built_in {
+  color: #ac98da;
+}
+
+.doc-prose .hljs-attr,
+.doc-prose .hljs-attribute,
+.doc-prose .hljs-variable,
+.doc-prose .hljs-template-variable,
+.doc-prose .hljs-property {
+  color: #b8dde8;
+}
+
+.doc-prose .hljs-deletion {
+  color: #ff806c;
+}
+
+.doc-prose .hljs-emphasis {
+  font-style: italic;
+}
+
+.doc-prose .hljs-strong {
+  font-weight: 600;
+}
+
+/* ---- hints (GitBook callouts) ---------------------------------------- */
+
+.doc-hint {
+  margin: 24px 0;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(126, 203, 221, 0.25);
+  background: rgba(126, 203, 221, 0.07);
+}
+
+.doc-hint-label {
+  display: block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #7ecbdd;
+  margin-bottom: 6px;
+}
+
+.doc-hint-body > p {
+  margin: 6px 0;
+}
+
+.doc-hint-body > :first-child {
+  margin-top: 0;
+}
+
+.doc-hint-body > :last-child {
+  margin-bottom: 0;
+}
+
+.doc-hint-warning {
+  border-color: rgba(217, 182, 120, 0.35);
+  background: rgba(217, 182, 120, 0.08);
+}
+
+.doc-hint-warning .doc-hint-label {
+  color: #d9b678;
+}
+
+.doc-hint-danger {
+  border-color: rgba(255, 128, 108, 0.35);
+  background: rgba(255, 128, 108, 0.08);
+}
+
+.doc-hint-danger .doc-hint-label {
+  color: #ff806c;
+}
+
+.doc-hint-success {
+  border-color: rgba(143, 211, 166, 0.35);
+  background: rgba(143, 211, 166, 0.08);
+}
+
+.doc-hint-success .doc-hint-label {
+  color: #8fd3a6;
+}
+
+/* ---- tables ----------------------------------------------------------- */
+
+.doc-table-wrap {
+  margin: 24px 0;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.doc-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.doc-prose th {
+  text-align: left;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(234, 246, 250, 0.68);
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.doc-prose table[data-header-hidden] thead {
+  display: none;
+}
+
+.doc-prose td {
+  vertical-align: top;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.doc-prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.doc-prose td p {
+  margin: 6px 0;
+}
+
+.doc-prose td > :first-child,
+.doc-prose td p:first-child {
+  margin-top: 0;
+}
+
+.doc-prose td > :last-child {
+  margin-bottom: 0;
+}
+
+/* ---- details / summary ------------------------------------------------ */
+
+.doc-prose details {
+  margin: 20px 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0 18px;
+}
+
+.doc-prose summary {
+  cursor: pointer;
+  padding: 14px 0;
+  font-weight: 500;
+  color: #eaf6fa;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  transition: color 150ms ease;
+}
+
+.doc-prose summary:hover {
+  color: #7ecbdd;
+}
+
+.doc-prose summary::-webkit-details-marker {
+  display: none;
+}
+
+.doc-prose summary::before {
+  content: "+";
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: #7ecbdd;
+  flex-shrink: 0;
+}
+
+.doc-prose details[open] summary::before {
+  content: "−";
+}
+
+.doc-prose details[open] summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.doc-prose details > :last-child {
+  margin-bottom: 18px;
+}
+
+/* ---- GitBook card grids ----------------------------------------------- */
+
+.doc-cards {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+@media (min-width: 640px) {
+  .doc-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.doc-prose .doc-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(126, 203, 221, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease;
+}
+
+.doc-prose .doc-card:hover {
+  border-color: rgba(126, 203, 221, 0.65);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.doc-card-cover {
+  display: block;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.doc-prose .doc-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 0;
+  border-radius: 0;
+  transition: transform 300ms ease;
+}
+
+.doc-prose .doc-card:hover .doc-card-cover img {
+  transform: scale(1.025);
+}
+
+.doc-card-body {
+  display: block;
+  padding: 16px 18px;
+}
+
+.doc-card-title {
+  display: block;
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #f4fbfd;
+  transition: color 200ms ease;
+}
+
+.doc-prose .doc-card:hover .doc-card-title {
+  color: #7ecbdd;
+}
+
+.doc-card-title strong {
+  font-weight: 500;
+}
+
+.doc-card-desc {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(234, 246, 250, 0.68);
+}
