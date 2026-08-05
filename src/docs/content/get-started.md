@@ -1,66 +1,100 @@
 # Getting Started
 
-We recommend you first give Burla a try inside our cloud to make sure it's right for you.\
-To try this [schedule a call with us](https://cal.com/jakez/burla?user=jakez\&duration=30) and we'll send you a managed trial instance afterward.
+Burla runs your Python functions on VMs in your own cloud account, and there is nothing to deploy. If you're logged in to your cloud's CLI and can boot VMs there, setup is one command:
+
+```bash
+pip install burla
+```
+
+Burla doesn't create service accounts, buckets, firewall rules, or IAM bindings. The VMs it boots carry no credentials, and your code, inputs, and results never leave your account.
+
+You'll need Python 3.11+ and one of these CLIs installed and logged in: [`aws`](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), [`gcloud`](https://cloud.google.com/sdk/docs/install), or [`az`](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
+
+
+
+#### 1. Pick your cloud
+
+Burla defaults to the account and region your AWS CLI is pointed at. If that's what you want, skip this step.
+
+To use Google Cloud, select it once and Burla will use your active gcloud project:
+
+```bash
+burla config set cloud gcp
+gcloud config set project <project-id>
+```
+
+To use Microsoft Azure, select it once and Burla will use your active subscription:
+
+```bash
+burla config set cloud azure
+az account set --subscription <subscription-id>
+```
+
+
+
+#### 2. Open the dashboard and boot some machines
+
+```bash
+burla dashboard
+```
+
+This starts Burla's cluster coordinator on your machine, streams its logs, and opens the dashboard in your browser. Press Ctrl-C to stop it. If a coordinator is already running, the command just opens the dashboard.
+
+In the dashboard, hit the **⏻ Start** button. This boots one node by default, and you'll see it come online in the nodes list. Machine type, node count, disk size, and Docker image are all editable in the dashboard's settings.
 
 {% hint style="info" %}
-Self-Hosted Burla is currently exclusive to Google Cloud.\
-Please reach out and tell us if you want to Self-Host, but aren't on GCP! My email is: jake@burla.dev
+Nodes shut themselves down after 10 idle minutes (configurable in settings), so nothing keeps running, or billing you, after you walk away.
 {% endhint %}
 
 
 
-#### 1. Ensure `gcloud` is setup and installed:
+#### 3. Run some code
 
-If you haven't, [install the gcloud CLI](https://cloud.google.com/sdk/docs/install), and [login using application-default credentials](https://cloud.google.com/docs/authentication/set-up-adc-local-dev-environment).
-
-Ensure `gcloud` is pointing at the project you wish to install Burla inside:
-
-* To view your current gcloud project run: `gcloud config get project`
-* To change your current gcloud project run: `gcloud config set project <NEW-PROJECT-ID>`
-
-
-
-#### 2. Run the `burla install` command:
-
-Run `pip install burla` then run `burla install`.
-
-<details>
-
-<summary>What permissions does my Google Cloud account need to run <code>burla install</code> ?</summary>
-
-{% hint style="info" %}
-If you don't have permissions, run the command anyway, and it will tell you which ones you are missing. Email jake@burla.dev if you need any help!
-{% endhint %}
-
-To run `burla install` you'll need permission to run these `gcloud` commands:
-
-* `gcloud services enable ...`
-* `gcloud compute firewall-rules create ...`
-* `gcloud secrets create ...`
-* `gcloud firestore databases create ...`
-* `gcloud run deploy ...`
-
-The **exact required permissions** for `burla install` are listed in the [CLI documentation](/docs/cli-reference#prerequisites).
-
-</details>
-
-
-
-#### 3. Start a machine and run some code!
-
-1. Use the [**Login**](https://login.burla.dev) button on this website to get to your new cluster dashboard.
-2. Hit the **⏻ Start** button to turn the cluster on.\
-   By default this starts one 4-CPU node. If inactive for >10 minutes this node will shut itself off.\
-   If you pass `grow=True` to `remote_parallel_map` it will start this node by itself.
-3. While booting, run `burla login` to connect your local computer to your cluster.
-4. Run the example below!
+While your node boots, run this from any Python shell, script, or notebook:
 
 ```python
 from burla import remote_parallel_map
 
-def my_function(my_input):
-    print("I'm running on remote computer in the cloud!")
-    
-remote_parallel_map(my_function, [1, 2, 3]) 
+def my_function(x):
+    print(f"processing input {x} on a machine in the cloud")
+    return x * 2
+
+results = remote_parallel_map(my_function, list(range(100)))
 ```
+
+Anything your function prints streams back to your terminal, exceptions are re-raised locally with full tracebacks, and the dashboard shows live logs, node status, and background jobs. Prefer a notebook? The same example is in our [Colab quickstart](https://colab.research.google.com/drive/1bR8Gpa85gqJi7_9uKdcJDX9_WG0tuVmG?usp=sharing).
+
+Hardware and environment are arguments, not configuration:
+
+```python
+results = remote_parallel_map(
+    my_function,
+    my_inputs,
+    func_cpu=4,           # CPUs reserved per function call
+    func_ram=16,          # GB of RAM per call ("dynamic" by default)
+    func_gpu="A100",      # one GPU per call
+    image="python:3.12",  # any Docker image
+)
+```
+
+See the [API reference](/docs/api-reference) for every argument.
+
+{% hint style="success" %}
+The dashboard is optional. `remote_parallel_map` starts the coordinator by itself, and by default (`grow=True`) boots VMs whenever capacity falls short. We lead with the dashboard because it makes for a nicer first run: without it, your first call spends a couple minutes booting VMs with nothing to watch.
+{% endhint %}
+
+
+
+#### 4. Deploy it for your team (optional)
+
+Everything so far ran the coordinator on your laptop. To share one cluster, dashboard, and job history with teammates, move it onto a small always-on VM in your account:
+
+```bash
+burla deploy
+```
+
+Job history and settings from your machine move with it, so the deployed dashboard picks up where your local one left off. This is the only step that needs more than permission to boot VMs (it sets up a service account and IAM); the exact list is in the [CLI reference](/docs/cli-reference). After deploying, teammates connect by running `burla login`.
+
+
+
+Questions, or something not working? Email jake@burla.dev or [book a call](https://cal.com/jakez/burla?user=jakez&duration=30), we're happy to help.

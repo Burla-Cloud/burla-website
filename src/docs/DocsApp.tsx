@@ -73,7 +73,7 @@ function SidebarRow({
       to={to}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      className={`block border-l-2 py-2 pr-3 text-[14px] leading-5 transition-colors ${
+      className={`flex min-h-11 items-center border-l-2 pr-3 text-[14px] leading-5 transition-colors ${
         heading ? "pl-4" : "pl-8"
       } ${
         active
@@ -117,7 +117,7 @@ function SidebarGroup({
           onNavigate={onNavigate}
         />
       ) : (
-        <p className="border-l-2 border-transparent py-2 pl-4 pr-3 text-[14px] font-medium leading-5 text-ice">
+        <p className="flex min-h-11 items-center border-l-2 border-transparent pl-4 pr-3 text-[14px] font-medium leading-5 text-ice">
           {group.label}
         </p>
       )}
@@ -192,6 +192,20 @@ export default function DocsApp() {
     document.title = page ? `${page.nav} · Burla` : "Documentation · Burla";
   }, [page]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
+
   if (redirect) return <Navigate to={redirect} replace />;
 
   // The docs have no landing page: /docs (and anything unknown) opens the
@@ -219,7 +233,9 @@ export default function DocsApp() {
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
-          className="flex w-full items-center gap-3 px-5 py-3 text-left font-mono text-[13px] text-ice sm:px-8"
+          aria-expanded={menuOpen}
+          aria-controls="docs-mobile-menu"
+          className="flex min-h-12 w-full items-center gap-3 px-5 text-left font-mono text-[13px] text-ice sm:px-8"
         >
           <svg
             viewBox="0 0 16 16"
@@ -241,13 +257,19 @@ export default function DocsApp() {
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-50 min-[1152px]:hidden">
+        <div
+          id="docs-mobile-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Documentation navigation"
+          className="fixed inset-0 z-50 min-[1152px]:hidden"
+        >
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={closeMenu}
             aria-hidden
           />
-          <div className="absolute inset-y-0 left-0 w-[310px] max-w-[86vw] overflow-y-auto border-r border-white/10 bg-[#0e1a26] py-5">
+          <div className="absolute inset-y-0 left-0 w-[310px] max-w-[86vw] overflow-y-auto border-r border-white/10 bg-[#0e1a26] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
             <div className="mb-4 flex items-center justify-between px-4">
               <span className="font-mono text-[11px] uppercase tracking-eyebrow text-inkFaint">
                 Documentation
@@ -256,7 +278,8 @@ export default function DocsApp() {
                 type="button"
                 onClick={closeMenu}
                 aria-label="Close docs menu"
-                className="rounded-md p-1.5 text-inkFaint transition-colors hover:bg-white/[0.05] hover:text-ink"
+                autoFocus
+                className="inline-flex size-11 items-center justify-center rounded-md text-inkFaint transition-colors hover:bg-white/[0.05] hover:text-ink"
               >
                 <svg
                   viewBox="0 0 16 16"
@@ -279,7 +302,7 @@ export default function DocsApp() {
                   key={t.label}
                   to={t.to}
                   onClick={closeMenu}
-                  className={`block border-l-2 py-2 pl-4 pr-3 font-mono text-[13px] transition-colors ${
+                  className={`flex min-h-11 items-center border-l-2 pl-4 pr-3 font-mono text-[13px] transition-colors ${
                     t.label === tab.label
                       ? "border-accent bg-white/[0.06] text-accent"
                       : "border-transparent text-ice/75 hover:text-ice"
@@ -298,11 +321,10 @@ export default function DocsApp() {
         // Modal's outer frame leaves a fixed 16px viewport gutter. Inside it,
         // the responsive sidebar track consumes 2/10 of the width (minimum
         // 256px), then becomes 352px at 2xl.
-        className="relative z-10 mx-4 pb-24 lg:pb-32"
-        style={{ paddingTop: NAV_H }}
+        className="relative z-10 mx-4 pb-24 pt-0 min-[1152px]:pb-32 min-[1152px]:pt-[74px]"
       >
-        <div className="lg:grid lg:grid-cols-[var(--docs-sidebar-w)_minmax(0,1fr)]">
-          <aside className="hidden lg:block">
+        <div className="min-[1152px]:grid min-[1152px]:grid-cols-[var(--docs-sidebar-w)_minmax(0,1fr)]">
+          <aside className="hidden min-[1152px]:block">
             <div
               className="sticky overflow-y-auto pb-12 pr-2 [scrollbar-width:thin]"
               style={{ top: NAV_H, maxHeight: `calc(100vh - ${NAV_H}px)`, paddingTop: 20 }}
@@ -314,20 +336,20 @@ export default function DocsApp() {
           {/* The right region centers a capped 1200px article/rail grid.
               Once capped, spare width appears only on its left. This keeps
               article → rail at 40px while sidebar → article grows. */}
-          <div className="flex min-w-0 justify-center lg:border-l lg:border-white/[0.08]">
+          <div className="flex min-w-0 justify-center min-[1152px]:border-l min-[1152px]:border-white/[0.08]">
             <div
-              className={`w-full max-w-[1200px] min-w-0 lg:pl-8 ${
+              className={`w-full max-w-[1200px] min-w-0 min-[1152px]:pl-8 ${
                 isCoverPage
                   ? ""
-                  : "grid lg:grid-cols-[minmax(0,8fr)_minmax(0,3fr)] lg:gap-4"
+                  : "grid min-[1152px]:grid-cols-[minmax(0,8fr)_minmax(0,3fr)] min-[1152px]:gap-4"
               }`}
             >
-              <main className="min-w-0 pb-12 pt-6 lg:pt-10">
+              <main className="min-w-0 pb-12 pt-6 min-[1152px]:pt-10">
                 <DocPage route={route} />
               </main>
 
               {!isCoverPage && (
-                <aside className="hidden pl-6 lg:block">
+                <aside className="hidden pl-6 min-[1152px]:block">
                   <div
                     className="sticky overflow-y-auto pb-12 [scrollbar-width:thin]"
                     style={{

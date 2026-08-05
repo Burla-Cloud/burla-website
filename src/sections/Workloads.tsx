@@ -46,7 +46,7 @@ function CyclingHeadingLine() {
   return (
     <span ref={ref} aria-hidden="true" className="relative block text-accent">
       {/* Invisible sizer pins the line's width and height to the final phrase. */}
-      <span className="invisible whitespace-nowrap">{finalText}</span>
+      <span className="invisible sm:whitespace-nowrap">{finalText}</span>
       <AnimatePresence initial={false}>
         <motion.span
           key={reduced ? "settled" : step}
@@ -54,7 +54,7 @@ function CyclingHeadingLine() {
           animate={{ opacity: 1, y: "0em" }}
           exit={{ opacity: 0, y: "-0.24em" }}
           transition={{ duration: reduced ? 0 : 0.34, ease: EASE }}
-          className="absolute inset-x-0 top-0 whitespace-nowrap"
+          className="absolute inset-x-0 top-0 sm:whitespace-nowrap"
           style={tint ? { color: tint } : undefined}
         >
           {active.text}
@@ -76,7 +76,7 @@ export function Workloads() {
           <Reveal>
             <h2
               id="workloads-title"
-              className="font-display text-[clamp(64px,5.85vw,84px)] font-medium leading-[0.98] tracking-[-0.045em]"
+              className="font-display text-[clamp(2.5rem,12vw,5.25rem)] font-medium leading-[0.98] tracking-[-0.045em]"
             >
               <span className="block text-ink">{WORKLOADS.heading[0]}</span>
               {/* Screen readers get the settled phrase immediately; the

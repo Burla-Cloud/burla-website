@@ -265,12 +265,15 @@
 }
 
 .doc-codeblock-bar button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   font: inherit;
   letter-spacing: inherit;
   color: rgba(234, 246, 250, 0.55);
   background: none;
   border: 0;
-  padding: 2px 0 2px 12px;
+  padding: 0 0 0 12px;
   cursor: pointer;
   transition: color 150ms ease;
 }
@@ -426,6 +429,7 @@
 
 .doc-prose table {
   width: 100%;
+  min-width: 36rem;
   border-collapse: collapse;
   font-size: 14px;
   line-height: 1.6;

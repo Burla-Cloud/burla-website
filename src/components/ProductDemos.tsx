@@ -149,10 +149,22 @@ export function ApiDemo() {
       label="Python script main.py: remote_parallel_map runs fn across inputs, with the hardware argument cycling between 64 CPUs, an A100 GPU, and a pytorch container image"
       className="h-[360px]"
     >
-      {/* 15.5px puts the call line (measured with the widest cycling arg) at
-          ~92% of the content width between the px-8 gutters, with no overflow. */}
-      <div className="flex h-[316px] items-center px-6 sm:px-8">
-        <code className="block whitespace-pre font-mono text-[15.5px] leading-9 text-ice/90">
+      <div className="flex h-[316px] items-center px-5 sm:px-8">
+        <code className="block whitespace-pre font-mono text-[11.5px] leading-7 text-ice/90 sm:hidden">
+          <span className="block">
+            <span className="text-cyan/75">from</span> burla{" "}
+            <span className="text-cyan/75">import</span>
+          </span>
+          <span className="block pl-4 text-cyan">remote_parallel_map</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan">remote_parallel_map(</span>
+          <span className="block pl-4">fn, inputs,</span>
+          <span className="block pl-4">
+            <CyclingArg />
+          </span>
+        </code>
+        {/* The desktop version stays compact enough to read as one real call. */}
+        <code className="hidden whitespace-pre font-mono text-[15.5px] leading-9 text-ice/90 sm:block">
           <span className="block">
             <span className="text-cyan/75">from</span> burla{" "}
             <span className="text-cyan/75">import</span>{" "}
@@ -425,7 +437,7 @@ export function AgentTerminal() {
       >
         <div className="flex h-[316px] flex-col px-5 py-5 font-mono text-[10px] leading-[1.7] sm:px-7 sm:py-6 sm:text-[11px]">
           <div
-            className={`grid grid-cols-[18px_1fr] transition-opacity duration-300 ${
+            className={`grid min-w-0 grid-cols-[18px_minmax(0,1fr)] transition-opacity duration-300 ${
               submitted ? "opacity-100" : "opacity-0"
             }`}
           >
@@ -441,19 +453,19 @@ export function AgentTerminal() {
                   elapsed >= event.at ? "opacity-100" : "opacity-0"
                 }`}
               >
-                <div className="grid grid-cols-[18px_1fr]">
+                <div className="grid min-w-0 grid-cols-[18px_minmax(0,1fr)]">
                   <span className={`select-none ${event.glyphClass}`}>{event.glyph}</span>
                   <span>{event.body}</span>
                 </div>
                 {event.results?.map((result) => (
                   <div
                     key={result.at}
-                    className={`grid grid-cols-[18px_1fr] transition-opacity duration-300 ${
+                    className={`grid min-w-0 grid-cols-[18px_minmax(0,1fr)] transition-opacity duration-300 ${
                       elapsed >= result.at ? "opacity-100" : "opacity-0"
                     }`}
                   >
                     <span />
-                    <span className="text-iceFaint">
+                    <span className="break-words text-iceFaint">
                       <span className="select-none">⎿&nbsp;&nbsp;</span>
                       {result.text}
                     </span>
@@ -560,7 +572,7 @@ export function DashboardDemo() {
                 <span className="tnum font-mono text-ice">{WIKIPEDIA_CHUNKS.toLocaleString()}</span>
                 <span className="text-iceFaint"> Function calls complete.</span>
               </span>
-              <span className="flex shrink-0 items-center gap-2 text-[7.5px] text-iceFaint">
+              <span className="hidden shrink-0 items-center gap-2 text-[7.5px] text-iceFaint sm:flex">
                 <span className="flex items-center gap-1">
                   <span className="size-1 rounded-full bg-emerald-300" />
                   Success <span className="tnum font-mono">{completed.toLocaleString()}</span>
@@ -584,7 +596,7 @@ export function DashboardDemo() {
           </div>
 
           <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.015]">
-            <div className="flex items-center gap-2 border-b border-white/[0.07] px-3 py-1.5 text-[8.5px] text-iceFaint">
+            <div className="flex items-center gap-2 overflow-hidden border-b border-white/[0.07] px-3 py-1.5 text-[8.5px] text-iceFaint">
               <span>Index</span>
               <span className="tnum rounded border border-white/[0.12] px-1.5 py-px font-mono text-iceDim">
                 0
@@ -594,12 +606,12 @@ export function DashboardDemo() {
               </span>
               <span className="rounded border border-white/[0.12] px-1 py-px leading-none">‹</span>
               <span className="rounded border border-white/[0.12] px-1 py-px leading-none">›</span>
-              <span className="ml-2">Has logs</span>
-              <span className="relative h-2.5 w-5 rounded-full bg-cyan/40">
+              <span className="ml-2 hidden sm:inline">Has logs</span>
+              <span className="relative hidden h-2.5 w-5 rounded-full bg-cyan/40 sm:inline-block">
                 <span className="absolute right-px top-px size-2 rounded-full bg-ice/90" />
               </span>
-              <span className="ml-1">Failed only</span>
-              <span className="tnum rounded border border-white/[0.12] px-1.5 py-px font-mono text-iceDim">
+              <span className="ml-1 hidden sm:inline">Failed only</span>
+              <span className="tnum hidden rounded border border-white/[0.12] px-1.5 py-px font-mono text-iceDim sm:inline">
                 0
               </span>
             </div>

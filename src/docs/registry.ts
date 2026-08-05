@@ -87,16 +87,20 @@ export const DOCS_TABS: DocTab[] = [
         route: "/docs/get-started",
         items: [
           {
-            label: "Set up gcloud",
-            to: "/docs/get-started#1-ensure-gcloud-is-setup-and-installed",
+            label: "Pick your cloud",
+            to: "/docs/get-started#1-pick-your-cloud",
           },
           {
-            label: "burla install",
-            to: "/docs/get-started#2-run-the-burla-install-command",
+            label: "Boot some machines",
+            to: "/docs/get-started#2-open-the-dashboard-and-boot-some-machines",
           },
           {
             label: "Run some code",
-            to: "/docs/get-started#3-start-a-machine-and-run-some-code",
+            to: "/docs/get-started#3-run-some-code",
+          },
+          {
+            label: "Deploy for your team",
+            to: "/docs/get-started#4-deploy-it-for-your-team-optional",
           },
         ],
       },
