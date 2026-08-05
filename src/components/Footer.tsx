@@ -23,7 +23,7 @@ export function Footer() {
                   href={logo.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="opacity-50 transition-opacity hover:opacity-90"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-50 transition-opacity hover:opacity-90"
                 >
                   <img
                     src={logo.src}
@@ -48,7 +48,7 @@ export function Footer() {
                     {l.href.startsWith("/docs") ? (
                       <Link
                         to={l.href}
-                        className="text-[13px] text-inkDim transition-colors hover:text-ink"
+                        className="inline-flex min-h-11 items-center text-[13px] text-inkDim transition-colors hover:text-ink"
                       >
                         {l.label}
                       </Link>
@@ -57,7 +57,7 @@ export function Footer() {
                         href={l.href}
                         target={l.href.startsWith("http") ? "_blank" : undefined}
                         rel={l.href.startsWith("http") ? "noreferrer" : undefined}
-                        className="text-[13px] text-inkDim transition-colors hover:text-ink"
+                        className="inline-flex min-h-11 items-center text-[13px] text-inkDim transition-colors hover:text-ink"
                       >
                         {l.label}
                       </a>

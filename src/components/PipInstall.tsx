@@ -55,7 +55,7 @@ export function PipInstall({ size = "big", className = "" }: Props) {
     return (
       <button
         onClick={copy}
-        className={`group inline-flex items-center gap-2.5 rounded-full border border-cyan/50 bg-panel px-5 py-2 font-mono text-[14px] font-medium text-ice transition-colors hover:border-cyan ${className}`}
+        className={`group inline-flex min-h-11 max-w-full items-center gap-2.5 rounded-full border border-cyan/50 bg-panel px-5 py-2 font-mono text-[14px] font-medium text-ice transition-colors hover:border-cyan ${className}`}
         aria-label="Copy pip install burla"
       >
         <span className="select-none text-cyan">$</span>
@@ -72,8 +72,10 @@ export function PipInstall({ size = "big", className = "" }: Props) {
   return (
     <button
       onClick={copy}
-      className={`group inline-flex items-center rounded-2xl border border-cyan/25 bg-panel text-left transition-colors hover:border-cyan/60 ${
-        isMega ? "gap-4 px-6 py-5 sm:gap-6 sm:px-9 sm:py-6" : "gap-4 px-6 py-4 sm:px-7 sm:py-5"
+      className={`group inline-flex max-w-full items-center justify-center rounded-2xl border border-cyan/25 bg-panel text-left transition-colors hover:border-cyan/60 ${
+        isMega
+          ? "gap-3 px-4 py-5 min-[380px]:gap-4 min-[380px]:px-6 sm:gap-6 sm:px-9 sm:py-6"
+          : "gap-3 px-4 py-4 min-[380px]:gap-4 min-[380px]:px-6 sm:px-7 sm:py-5"
       } ${className}`}
       aria-label="Copy pip install burla"
       style={{
@@ -105,7 +107,7 @@ export function PipInstall({ size = "big", className = "" }: Props) {
         }`}
       >
         <CopyIcon done={copied} />
-        {copied ? "copied" : "copy"}
+        <span className="hidden min-[380px]:inline">{copied ? "copied" : "copy"}</span>
       </span>
     </button>
   );

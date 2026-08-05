@@ -363,6 +363,85 @@ function StatIcon({ icon }: { icon: string }) {
   );
 }
 
+function MobileNotebookFlow() {
+  return (
+    <div
+      role="img"
+      aria-label="A local Jupyter notebook sends one Python function to eight remote worker machines in your cloud"
+      className="min-[900px]:hidden"
+    >
+      <div className="overflow-hidden rounded-xl border border-cyan/30 bg-[#0A1B2A] shadow-[0_22px_55px_-24px_rgba(0,0,0,0.7)]">
+        <div className="flex h-11 items-center border-b border-white/[0.08] px-4">
+          <span className="flex gap-1.5" aria-hidden>
+            {NB.dots.map((dot) => (
+              <span key={dot} className="size-2 rounded-full" style={{ background: dot }} />
+            ))}
+          </span>
+          <span className="ml-3 truncate font-mono text-[11px] text-iceFaint">
+            {LAPTOP.window.title}
+          </span>
+        </div>
+        <div className="p-4">
+          <div className="rounded-lg border-l-[3px] border-cyan bg-white/[0.045] p-3">
+            <code className="block whitespace-pre-wrap break-words font-mono text-[11px] leading-6 text-ice">
+              <span className="text-cyan/75">from</span> burla{" "}
+              <span className="text-cyan/75">import</span>{"\n"}
+              <span className="text-cyan">remote_parallel_map</span>
+              {"\n\n"}
+              results = <span className="text-cyan">remote_parallel_map</span>({"\n"}
+              {"  "}run_trial, param_grid,{"\n"}
+              {"  "}func_cpu=<span className="text-amber-200/90">64</span>,{"\n"})
+            </code>
+          </div>
+          <div className="mt-3 font-mono text-[10.5px] leading-5 text-iceFaint">
+            <p>
+              <span className="text-cyan/70">[worker-07]</span> trial complete · auc=0.947
+            </p>
+            <p>
+              <span className="text-cyan/70">[worker-12]</span> trial complete · auc=0.951
+            </p>
+            <p className="mt-1 font-medium text-ice">
+              <span className="text-emerald-300">✓</span> 1,024 trials complete
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div aria-hidden className="flex flex-col items-center py-4 font-mono text-[10px] text-accent">
+        <span className="h-7 w-px bg-accent/50" />
+        <span className="mt-1 uppercase tracking-[0.18em]">fan out</span>
+        <span className="mt-1 h-7 w-px bg-accent/50" />
+        <span>↓</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2" aria-hidden>
+        {LAPTOP.fleet.workers.map((name) => (
+          <div
+            key={name}
+            className="flex items-center gap-2 rounded-lg border border-cyan/25 bg-[#081826] px-3 py-2.5"
+          >
+            <span className="grid size-5 shrink-0 place-items-center rounded border border-cyan/50 text-[9px] text-accent">
+              ×
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-mono text-[10px] text-ice">{name}</span>
+              <span className="block font-mono text-[8.5px] text-accent/75">
+                {LAPTOP.fleet.cpus}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <p
+        aria-hidden
+        className="mt-4 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-inkFaint"
+      >
+        AWS · Google Cloud · Azure
+      </p>
+    </div>
+  );
+}
+
 export function Laptop() {
   // Keep the generous top rhythm while tightening the next handoff by 16px.
   return (
@@ -376,7 +455,8 @@ export function Laptop() {
         </Reveal>
 
         <Reveal className="mt-12 sm:mt-14" y={20}>
-          <figure className="relative">
+          <MobileNotebookFlow />
+          <figure className="relative hidden min-[900px]:block">
             <svg
               viewBox={`0 0 ${VB.w} ${VB.h}`}
               role="img"
@@ -447,7 +527,7 @@ export function Laptop() {
         </Reveal>
 
         <Reveal className="mt-14 sm:mt-16" y={20}>
-          <div className="grid grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
             {LAPTOP.stats.map((stat) => (
               <div key={stat.label}>
                 <StatIcon icon={stat.icon} />
