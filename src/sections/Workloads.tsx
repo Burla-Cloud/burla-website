@@ -76,7 +76,7 @@ export function Workloads() {
           <Reveal>
             <h2
               id="workloads-title"
-              className="font-display text-[clamp(2.5rem,12vw,5.25rem)] font-medium leading-[0.98] tracking-[-0.045em]"
+              className="h-big max-w-4xl"
             >
               <span className="block text-ink">{WORKLOADS.heading[0]}</span>
               {/* Screen readers get the settled phrase immediately; the

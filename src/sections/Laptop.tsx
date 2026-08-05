@@ -448,9 +448,9 @@ export function Laptop() {
     <section id="laptop" className="relative pb-24 pt-24 sm:pb-28 sm:pt-32">
       <div className="container-x">
         <Reveal>
-          <h2 className="h-big max-w-4xl text-ink">
-            <span className="block">{LAPTOP.heading[0]}</span>
-            <span className="block text-accent">{LAPTOP.heading[1]}</span>
+          <h2 className="h-big text-ink">
+            <span className="block md:whitespace-nowrap">{LAPTOP.heading[0]}</span>
+            <span className="block text-accent md:whitespace-nowrap">{LAPTOP.heading[1]}</span>
           </h2>
         </Reveal>
 
