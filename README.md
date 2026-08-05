@@ -24,5 +24,9 @@ npm run dev
 
 ## Deploy
 
-Every push to `main` builds the site and deploys it to GitHub Pages via
-`.github/workflows/deploy.yml`.
+Production is `https://burla.dev`, served by nginx from `/var/www/burla` on the
+`burla-website` EC2 instance in the `burla-prod` AWS account (`us-east-1`).
+
+Build with `npm ci && npm run build`, upload the `dist/` artifact to
+`s3://burla-website-deploy-018789813546-us-east-1/releases/`, then deploy it to
+the instance through SSM. GitHub Pages must remain disabled for this repository.
