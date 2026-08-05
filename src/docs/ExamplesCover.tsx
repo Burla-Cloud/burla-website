@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ExampleIcon } from "../components/ExampleIcon";
-import { BASICS_CATEGORY, EXAMPLE_CATEGORIES } from "./examples";
+import { ALL_EXAMPLE_CATEGORIES } from "./examples";
 import type { ExampleCard as ExampleCardData } from "./examples";
 
 function ExampleCard({ example, className = "" }: { example: ExampleCardData; className?: string }) {
@@ -48,7 +48,7 @@ export function ExamplesCover() {
       />
 
       <div className="mt-12 space-y-12">
-        {EXAMPLE_CATEGORIES.map((category) => (
+        {ALL_EXAMPLE_CATEGORIES.map((category) => (
           <section key={category.label} aria-labelledby={`examples-${category.legacyRoute.split("/").at(-1)}`}>
             <div className="mb-5">
               <h2
@@ -74,23 +74,6 @@ export function ExamplesCover() {
               </div>
             </div>
           </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function BasicsCover() {
-  return (
-    <div className="pb-12">
-      <CoverHeader
-        title="Basics"
-        description="Start with the reusable patterns behind most Burla jobs."
-      />
-
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 min-[1240px]:grid-cols-3">
-        {BASICS_CATEGORY.examples.map((example) => (
-          <ExampleCard key={example.route} example={example} />
         ))}
       </div>
     </div>

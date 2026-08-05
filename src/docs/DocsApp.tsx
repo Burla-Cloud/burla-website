@@ -21,7 +21,7 @@ function DocsTabs({ active }: { active?: DocTab }) {
   return (
     <nav
       aria-label="Docs sections"
-      className="hidden items-center gap-6 min-[1240px]:flex"
+      className="hidden items-center gap-6 min-[1152px]:flex"
     >
       {DOCS_TABS.map((tab) => {
         const isActive = tab.label === active?.label;
@@ -173,7 +173,7 @@ export default function DocsApp() {
   const page = findDocPage(route);
   const tab = findDocTab(route);
   const redirect = findDocRedirect(route);
-  const isCoverPage = route === "/docs/examples" || route === "/docs/basics";
+  const isCoverPage = route === "/docs/examples";
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => setMenuOpen(false);
@@ -213,7 +213,7 @@ export default function DocsApp() {
 
       {/* Mobile: current-page bar that opens the docs menu. */}
       <div
-        className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#0a141e]/95 backdrop-blur min-[1240px]:hidden"
+        className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#0a141e]/95 backdrop-blur min-[1152px]:hidden"
         style={{ paddingTop: NAV_H }}
       >
         <button
@@ -241,7 +241,7 @@ export default function DocsApp() {
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-50 min-[1240px]:hidden">
+        <div className="fixed inset-0 z-50 min-[1152px]:hidden">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={closeMenu}

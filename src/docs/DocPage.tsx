@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { getDocContent } from "./loader";
 import { DocMarkdown } from "./markdown";
-import { BasicsCover, ExamplesCover } from "./ExamplesCover";
+import { ExamplesCover } from "./ExamplesCover";
 
 export function DocPage({ route }: { route: string }) {
-  if (route === "/docs/examples" || route === "/docs/basics") {
+  if (route === "/docs/examples") {
     return (
       <div id="doc-article" className="w-full min-w-0 pt-4 lg:pt-0">
-        {route === "/docs/examples" ? <ExamplesCover /> : <BasicsCover />}
+        <ExamplesCover />
       </div>
     );
   }

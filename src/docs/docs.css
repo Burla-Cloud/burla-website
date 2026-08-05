@@ -10,7 +10,7 @@
 
 /* Keep the shared navbar controls in their normal positions while placing
    the docs tabs independently on the content divider. */
-@media (min-width: 1240px) {
+@media (min-width: 1152px) {
   .docs-sections-slot {
     position: absolute;
     top: 50%;

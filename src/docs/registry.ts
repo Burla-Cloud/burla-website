@@ -1,7 +1,5 @@
 import {
   ALL_EXAMPLE_CATEGORIES,
-  BASICS_CATEGORY,
-  EXAMPLE_CATEGORIES,
 } from "./examples";
 import type { ExampleCard } from "./examples";
 
@@ -38,7 +36,6 @@ const CORE_PAGES: DocPage[] = [
   { route: "/docs/api-reference", nav: "API Reference" },
   { route: "/docs/cli-reference", nav: "CLI Reference" },
   { route: "/docs/examples", nav: "Examples" },
-  { route: "/docs/basics", nav: "Basics" },
 ];
 
 // Featured examples stay routable (the landing page links to them) but are
@@ -143,25 +140,13 @@ export const DOCS_TABS: DocTab[] = [
     match: [
       "/docs/examples",
       "/docs/featured-examples",
-      ...EXAMPLE_CATEGORIES.map((category) => `${category.legacyRoute}/`),
+      ...ALL_EXAMPLE_CATEGORIES.map((category) => `${category.legacyRoute}/`),
     ],
-    groups: EXAMPLE_CATEGORIES.map((category) => ({
+    groups: ALL_EXAMPLE_CATEGORIES.map((category) => ({
       label: category.label,
       route: category.examples[0].route,
       items: toItems(category.examples),
     })),
-  },
-  {
-    label: "Basics",
-    to: "/docs/basics",
-    match: ["/docs/basics", `${BASICS_CATEGORY.legacyRoute}/`],
-    groups: [
-      {
-        label: "Basics",
-        route: "/docs/basics",
-        items: toItems(BASICS_CATEGORY.examples),
-      },
-    ],
   },
   {
     label: "Blog",
@@ -181,10 +166,12 @@ export const DOCS_PAGES: DocPage[] = [
 
 const byRoute = new Map(DOCS_PAGES.map((page) => [page.route, page]));
 const redirects = new Map(
-  ALL_EXAMPLE_CATEGORIES.map((category) => [
-    category.legacyRoute,
-    category.examples[0].route,
-  ]),
+  [
+    ...ALL_EXAMPLE_CATEGORIES.map(
+      (category) => [category.legacyRoute, category.examples[0].route] as const,
+    ),
+    ["/docs/basics", "/docs/examples"] as const,
+  ],
 );
 
 export function findDocPage(route: string): DocPage | undefined {
