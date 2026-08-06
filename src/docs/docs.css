@@ -157,7 +157,7 @@
 }
 
 .blog-post > * {
-  width: min(100%, 760px);
+  width: 100%;
   margin-inline: auto;
 }
 
@@ -168,7 +168,7 @@
 }
 
 .blog-post > h1 {
-  max-width: 860px;
+  max-width: none;
   text-wrap: wrap;
 }
 
@@ -253,6 +253,12 @@
 
 .doc-prose blockquote p {
   margin: 8px 0;
+}
+
+/* ---- floating diagrams ------------------------------------------------ */
+
+.doc-prose .doc-diagram {
+  margin: 40px 0;
 }
 
 /* ---- images / video / embeds ---------------------------------------- */

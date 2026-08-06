@@ -77,7 +77,7 @@ function HeroGraphic() {
   return (
     <div
       aria-hidden="true"
-      className="relative mx-auto h-[320px] w-full max-w-[500px] overflow-hidden"
+      className="relative mx-auto h-[420px] w-full max-w-[520px] overflow-hidden lg:h-[560px] lg:max-w-none"
     >
       <div className="absolute inset-[15%] rounded-full bg-accent/[0.055] blur-3xl" />
       <Suspense fallback={null}>
