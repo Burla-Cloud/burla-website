@@ -255,18 +255,14 @@ export const FEATURES = {
 // ---------------------------------------------------------------------------
 
 export const FINALE = {
-  headline: "Try it now.",
-  subLine1: "Zero deployment required.",
-  // Segments so the commands render as inline code.
-  subLine2: [
-    { text: "Simply ", code: false },
-    { text: "pip install", code: true },
-    { text: " and run ", code: false },
-    { text: "burla dashboard", code: true },
-    { text: " to check it out.", code: false },
+  headline: ["Try Burla now", "with two commands."],
+  // One short reassurance line; the terminal block below carries the actual
+  // instructions so the copy never repeats them.
+  sub: [
+    "Zero deployment required.",
+    "Burla can boot VMs using your local cloud credentials.",
   ],
-  ctaGithub: "Star on GitHub",
-  ctaDocs: "Read the docs",
+  commands: ["pip install burla", "burla dashboard"],
 };
 
 export const FOOTER = {
