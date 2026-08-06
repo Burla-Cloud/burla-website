@@ -258,10 +258,7 @@ export const FINALE = {
   headline: ["Try Burla now", "with two commands."],
   // One short reassurance line; the terminal block below carries the actual
   // instructions so the copy never repeats them.
-  sub: [
-    "Zero deployment required.",
-    "Burla can boot VMs using your local cloud credentials.",
-  ],
+  sub: "Zero deployment required. Burla can run the dashboard locally and boot VMs using local cloud credentials.",
   commands: ["pip install burla", "burla dashboard"],
 };
 

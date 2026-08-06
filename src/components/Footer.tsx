@@ -5,7 +5,7 @@ import { FOOTER } from "../content";
 // The site-wide footer, shared by the landing page finale and the docs pages.
 export function Footer() {
   return (
-    <footer className="mt-40 border-t border-hairline sm:mt-52">
+    <footer className="mt-80 border-t border-hairline sm:mt-[26rem]">
       <div className="container-x pb-8 pt-14">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
           <div>
