@@ -37,7 +37,7 @@ export function Finale() {
           <a href={LINKS.github} target="_blank" rel="noreferrer" className="btn-primary">
             {FINALE.ctaGithub}
           </a>
-          <Link to={LINKS.docs} className="btn-ghost">
+          <Link to={LINKS.getStarted} className="btn-ghost">
             {FINALE.ctaDocs}
           </Link>
         </Reveal>

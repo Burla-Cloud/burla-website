@@ -5,6 +5,7 @@ import { Footer } from "../components/Footer";
 import { DOCS_TABS, findDocPage, findDocRedirect, findDocTab } from "./registry";
 import type { DocGroup, DocTab } from "./registry";
 import { DocPage } from "./DocPage";
+import { DocsLanding } from "./DocsLanding";
 import { Toc } from "./Toc";
 import "./docs.css";
 
@@ -29,6 +30,7 @@ function DocsTabs({ active }: { active?: DocTab }) {
           <Link
             key={tab.label}
             to={tab.to}
+            replace={!active}
             aria-current={isActive ? "page" : undefined}
             // -my-4/py-4 stretches the link to the navbar's full height so the
             // active underline can sit on the navbar's bottom edge.
@@ -173,6 +175,7 @@ export default function DocsApp() {
   const page = findDocPage(route);
   const tab = findDocTab(route);
   const redirect = findDocRedirect(route);
+  const isLandingPage = route === "/docs";
   const isCoverPage = route === "/docs/examples";
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -208,8 +211,26 @@ export default function DocsApp() {
 
   if (redirect) return <Navigate to={redirect} replace />;
 
-  // The docs have no landing page: /docs (and anything unknown) opens the
-  // Getting Started page.
+  if (isLandingPage) {
+    return (
+      <div className="grain relative min-h-screen overflow-hidden bg-[#0a141e] text-ink">
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0"
+          style={{
+            background:
+              "radial-gradient(1050px 560px at 82% -8%, rgba(126,203,221,0.09), transparent 64%), radial-gradient(760px 460px at -12% 16%, rgba(42,127,150,0.07), transparent 62%)",
+          }}
+        />
+        <Nav sections={<DocsTabs />} />
+        <div className="relative z-10">
+          <DocsLanding />
+        </div>
+      </div>
+    );
+  }
+
+  // Unknown docs routes open Getting Started.
   if (!page || !tab) return <Navigate to="/docs/get-started" replace />;
 
   return (
@@ -269,7 +290,7 @@ export default function DocsApp() {
             onClick={closeMenu}
             aria-hidden
           />
-          <div className="absolute inset-y-0 left-0 w-[310px] max-w-[86vw] overflow-y-auto border-r border-white/10 bg-[#0e1a26] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
+          <div className="docs-scroller absolute inset-y-0 left-0 w-[310px] max-w-[86vw] overflow-y-auto border-r border-white/10 bg-[#0e1a26] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
             <div className="mb-4 flex items-center justify-between px-4">
               <span className="font-mono text-[11px] uppercase tracking-eyebrow text-inkFaint">
                 Documentation
@@ -326,7 +347,7 @@ export default function DocsApp() {
         <div className="min-[1152px]:grid min-[1152px]:grid-cols-[var(--docs-sidebar-w)_minmax(0,1fr)]">
           <aside className="hidden min-[1152px]:block">
             <div
-              className="sticky overflow-y-auto pb-12 pr-2 [scrollbar-width:thin]"
+              className="docs-scroller sticky overflow-y-auto pb-12 pr-2"
               style={{ top: NAV_H, maxHeight: `calc(100vh - ${NAV_H}px)`, paddingTop: 20 }}
             >
               <Sidebar tab={tab} route={route} hash={hash} onNavigate={closeMenu} />
