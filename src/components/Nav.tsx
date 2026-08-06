@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { NAV } from "../content";
+import { LINKS, NAV } from "../content";
 import { BrandLockup } from "./BrandLockup";
 import { formatStars, useStars } from "../lib/useRepoStats";
+import { prefetchDocsApp, prefetchDocsHero } from "../lib/prefetchDocs";
 
 /**
  * The site navbar. `sections` is an optional slot rendered beside the brand,
@@ -19,6 +20,18 @@ export function Nav({ sections }: { sections?: ReactNode }) {
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  // Warm the docs hero chunk once this page is idle so the galaxy is already
+  // compiled when someone clicks through.
+  useEffect(() => {
+    const idle = window.requestIdleCallback;
+    if (idle) {
+      const handle = idle(() => prefetchDocsHero(), { timeout: 3000 });
+      return () => window.cancelIdleCallback?.(handle);
+    }
+    const timer = window.setTimeout(prefetchDocsHero, 1200);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -56,8 +69,21 @@ export function Nav({ sections }: { sections?: ReactNode }) {
               const linkClass =
                 "group flex min-h-11 items-center gap-3 font-mono text-[15px] font-medium text-ice transition-colors hover:text-accent";
               if (l.href.startsWith("/")) {
+                const warm =
+                  l.href === LINKS.docs
+                    ? () => {
+                        prefetchDocsHero();
+                        prefetchDocsApp();
+                      }
+                    : undefined;
                 return (
-                  <Link key={l.label} to={l.href} className={linkClass}>
+                  <Link
+                    key={l.label}
+                    to={l.href}
+                    className={linkClass}
+                    onPointerEnter={warm}
+                    onFocus={warm}
+                  >
                     {l.label}
                   </Link>
                 );

@@ -1,9 +1,8 @@
-import { lazy, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer } from "../components/Footer";
 import { FeaturedExamplesRail } from "../components/FeaturedExamplesRail";
-
-const DocsGalaxy = lazy(() => import("./DocsGalaxy"));
+import { loadedDocsHero, prefetchDocsHero } from "../lib/prefetchDocs";
 
 const RESOURCES = [
   {
@@ -74,15 +73,27 @@ function ResourceIcon({ icon }: { icon: (typeof RESOURCES)[number]["icon"] }) {
 }
 
 function HeroGraphic() {
+  // Already warmed by the nav? Then the disc renders on this first commit.
+  const [DocsGalaxy, setDocsGalaxy] = useState(loadedDocsHero);
+
+  useEffect(() => {
+    if (DocsGalaxy) return;
+    let live = true;
+    void prefetchDocsHero().then((component) => {
+      if (live) setDocsGalaxy(() => component);
+    });
+    return () => {
+      live = false;
+    };
+  }, [DocsGalaxy]);
+
   return (
     <div
       aria-hidden="true"
       className="relative mx-auto h-[420px] w-full max-w-[520px] overflow-hidden lg:h-[560px] lg:max-w-none"
     >
       <div className="absolute inset-[15%] rounded-full bg-accent/[0.055] blur-3xl" />
-      <Suspense fallback={null}>
-        <DocsGalaxy />
-      </Suspense>
+      {DocsGalaxy && <DocsGalaxy />}
     </div>
   );
 }
