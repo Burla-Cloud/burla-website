@@ -1,9 +1,8 @@
-import { useEffect, useRef } from "react";
-import { useReducedMotion } from "framer-motion";
+import { useEffect } from "react";
 import { Nav } from "../components/Nav";
-import { Footer } from "../components/Footer";
-import { Scene } from "../components/Scene";
+import { StarfieldBackground } from "../components/StarfieldBackground";
 import { DocMarkdown } from "../docs/markdown";
+import { Finale } from "../sections/Finale";
 import rawPost from "./dynamic-hardware.md?raw";
 import "../docs/docs.css";
 
@@ -29,51 +28,29 @@ function preparePost(raw: string): string {
 const POST = preparePost(rawPost);
 
 export default function BlogApp() {
-  const descentRef = useRef(0);
-  const reducedMotion = useReducedMotion() ?? false;
-
   useEffect(() => {
     document.title = "You should not need to estimate CPU or RAM · Burla";
   }, []);
 
-  useEffect(() => {
-    const update = () => {
-      descentRef.current = Math.max(0, window.scrollY / window.innerHeight);
-    };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-
   return (
     <div className="grain relative min-h-screen bg-void text-ink">
-      <div className="fixed inset-0 z-0" aria-hidden>
-        <Scene
-          descent={descentRef}
-          reducedMotion={reducedMotion}
-          galaxy={false}
-        />
-      </div>
+      <StarfieldBackground />
 
       <Nav />
 
       <main className="relative z-10 px-6 pt-32 sm:px-10 sm:pt-40">
-        <div className="mx-auto max-w-[760px]">
+        <div className="mx-auto max-w-[980px]">
           <p className="mb-4 font-mono text-[12px] text-accent/80">
             This is our only blog post so far :)
           </p>
-          <article className="doc-prose text-shadow-soft">
+          <article className="blog-post doc-prose text-shadow-soft">
             <DocMarkdown markdown={POST} />
           </article>
         </div>
       </main>
 
       <div className="relative z-10">
-        <Footer />
+        <Finale />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { Nav } from "../components/Nav";
 import { Footer } from "../components/Footer";
+import { StarfieldBackground } from "../components/StarfieldBackground";
 import { DOCS_TABS, findDocPage, findDocRedirect, findDocTab } from "./registry";
 import type { DocGroup, DocTab } from "./registry";
 import { DocPage } from "./DocPage";
@@ -214,14 +215,7 @@ export default function DocsApp() {
   if (isLandingPage) {
     return (
       <div className="grain relative min-h-screen overflow-hidden bg-[#0a141e] text-ink">
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0"
-          style={{
-            background:
-              "radial-gradient(1050px 560px at 82% -8%, rgba(126,203,221,0.09), transparent 64%), radial-gradient(760px 460px at -12% 16%, rgba(42,127,150,0.07), transparent 62%)",
-          }}
-        />
+        <StarfieldBackground />
         <Nav sections={<DocsTabs />} />
         <div className="relative z-10">
           <DocsLanding />
@@ -235,15 +229,7 @@ export default function DocsApp() {
 
   return (
     <div className="grain relative min-h-screen bg-[#0a141e] text-ink">
-      {/* Quiet static backdrop in place of the landing page's starfield. */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background:
-            "radial-gradient(1100px 520px at 78% -8%, rgba(126,203,221,0.08), transparent 62%), radial-gradient(900px 480px at -12% 8%, rgba(42,127,150,0.075), transparent 60%)",
-        }}
-      />
+      <StarfieldBackground />
       <Nav sections={<DocsTabs active={tab} />} />
 
       {/* Mobile: current-page bar that opens the docs menu. */}

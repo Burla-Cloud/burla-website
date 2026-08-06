@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { NAV } from "../content";
 import { BrandLockup } from "./BrandLockup";
 import { formatStars, useStars } from "../lib/useRepoStats";
@@ -11,14 +11,8 @@ import { formatStars, useStars } from "../lib/useRepoStats";
  */
 export function Nav({ sections }: { sections?: ReactNode }) {
   const stars = useStars();
-  const { pathname } = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // The Docs link is redundant while reading the docs.
-  const links = NAV.links.filter(
-    (l) => !(l.href.startsWith("/docs") && pathname.startsWith("/docs")),
-  );
 
   useEffect(() => {
     const update = () => setScrolled(window.scrollY > 24);
@@ -56,7 +50,7 @@ export function Nav({ sections }: { sections?: ReactNode }) {
         </div>
         <div className="flex items-center gap-7">
           <nav className="hidden items-center gap-7 sm:flex">
-            {links.map((l) => {
+            {NAV.links.map((l) => {
               const linkClass =
                 "group flex min-h-11 items-center gap-3 font-mono text-[15px] font-medium text-ice transition-colors hover:text-accent";
               if (l.href.startsWith("/")) {
@@ -131,7 +125,7 @@ export function Nav({ sections }: { sections?: ReactNode }) {
           className="h-[calc(100dvh-64px)] overflow-y-auto border-t border-white/[0.08] bg-[#03080d] px-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 sm:hidden"
         >
           <nav aria-label="Mobile navigation" className="flex flex-col">
-            {links.map((link) =>
+            {NAV.links.map((link) =>
               link.href.startsWith("/") ? (
                 <Link
                   key={link.label}
