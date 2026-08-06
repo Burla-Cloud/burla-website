@@ -1,5 +1,9 @@
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BrandLockup } from "../components/BrandLockup";
+import { Footer } from "../components/Footer";
+import { WORKLOADS } from "../content";
+
+const DocsGalaxy = lazy(() => import("./DocsGalaxy"));
 
 const RESOURCES = [
   {
@@ -28,38 +32,39 @@ const RESOURCES = [
   },
 ] as const;
 
-const FEATURED_EXAMPLES = [
-  {
-    title: "Query 2.4TB of Parquet in 76s",
-    description: "Run one DuckDB query over 1,000 files on a 10,000-CPU cluster.",
-    to: "/docs/featured-examples/process-2.4tb-of-parquet-files-in-76s",
-    image: "/docs-assets/more-examples/query-2-4tb-parquet-cover.webp",
-  },
-  {
-    title: "Test Airbnb hypotheses at public-data scale",
-    description: "CLIP-score 1.7M listing photos across 119 cities.",
-    to: "/docs/featured-examples/airbnb-burla",
-    image: "/docs-assets/more-examples/airbnb-burla-cover.webp",
-  },
-  {
-    title: "Rank 572M Amazon reviews",
-    description: "Stream 275GB of reviews and keep the most interesting results.",
-    to: "/docs/featured-examples/amazon-review-distiller",
-    image: "/docs-assets/more-examples/amazon-review-distiller-cover.webp",
-  },
-  {
-    title: "Cluster 2.7M arXiv abstracts",
-    description: "Embed the full corpus and trace research topics through time.",
-    to: "/docs/featured-examples/arxiv-fossils",
-    image: "/docs-assets/more-examples/arxiv-fossils-cover.webp",
-  },
-  {
-    title: "Run a genomic alignment pipeline",
-    description: "Process 360 Illumina samples with native tools in one run.",
-    to: "/docs/featured-examples/multi-stage-genomic-pipeline",
-    image: "/docs-assets/more-examples/multi-stage-genomic-pipeline-cover.webp",
-  },
-] as const;
+const FEATURED_COVERS: Record<string, string> = {
+  "/docs/featured-examples/process-2.4tb-of-parquet-files-in-76s":
+    "/docs-assets/more-examples/query-2-4tb-parquet-cover.webp",
+  "/docs/featured-examples/airbnb-burla":
+    "/docs-assets/more-examples/airbnb-burla-cover.webp",
+  "/docs/featured-examples/multi-stage-genomic-pipeline":
+    "/docs-assets/more-examples/multi-stage-genomic-pipeline-cover.webp",
+  "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods":
+    "/docs-assets/more-examples/nyc-ghost-neighborhoods-cover.webp",
+  "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo":
+    "/docs-assets/more-examples/gpu-embedding-demo-cover.webp",
+  "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day":
+    "/docs-assets/more-examples/ghcn-rainiest-day-cover.webp",
+  "/docs/all-examples/data-processing-examples/world-photo-index":
+    "/docs-assets/more-examples/world-photo-index-cover.webp",
+  "/docs/featured-examples/arxiv-fossils":
+    "/docs-assets/more-examples/arxiv-fossils-cover.webp",
+  "/docs/all-examples/ml-embeddings-and-search/parallel-hyperparameter-tuning":
+    "/docs-assets/more-examples/parallel-hyperparameter-tuning-cover.webp",
+  "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing":
+    "/docs-assets/more-examples/gdal-raster-processing-cover.webp",
+  "/docs/all-examples/production-data-jobs/monte-carlo-simulation":
+    "/docs-assets/more-examples/monte-carlo-simulation-cover.webp",
+  "/docs/featured-examples/amazon-review-distiller":
+    "/docs-assets/more-examples/amazon-review-distiller-cover.webp",
+};
+
+const FEATURED_EXAMPLES = WORKLOADS.examples.map((example) => ({
+  title: example.title,
+  description: example.desc,
+  to: example.href,
+  image: FEATURED_COVERS[example.href],
+}));
 
 function ResourceIcon({ icon }: { icon: (typeof RESOURCES)[number]["icon"] }) {
   return (
@@ -81,10 +86,10 @@ function ResourceIcon({ icon }: { icon: (typeof RESOURCES)[number]["icon"] }) {
       )}
       {icon === "grid" && (
         <>
-          <rect x="4" y="5" width="6" height="6" rx="1" />
-          <rect x="14" y="3" width="6" height="8" rx="1" />
-          <rect x="4" y="15" width="6" height="6" rx="1" />
-          <rect x="14" y="15" width="6" height="6" rx="1" />
+          <rect x="4" y="4" width="6" height="6" rx="1" />
+          <rect x="14" y="4" width="6" height="6" rx="1" />
+          <rect x="4" y="14" width="6" height="6" rx="1" />
+          <rect x="14" y="14" width="6" height="6" rx="1" />
         </>
       )}
       {icon === "code" && (
@@ -104,24 +109,56 @@ function ResourceIcon({ icon }: { icon: (typeof RESOURCES)[number]["icon"] }) {
 
 function HeroGraphic() {
   return (
-    <svg
-      viewBox="0 0 420 300"
+    <div
       aria-hidden="true"
-      className="mx-auto w-full max-w-[430px]"
-      fill="none"
+      className="relative mx-auto h-[320px] w-full max-w-[500px] overflow-hidden"
     >
-      <path d="M78 40h244v214H78z" stroke="rgba(126,203,221,0.35)" />
-      <path d="M110 70h178v152H110z" stroke="rgba(126,203,221,0.28)" />
-      <path d="m78 40 32 30M322 40l-34 30M322 254l-34-32" stroke="rgba(126,203,221,0.28)" />
-      <path d="M78 168h82v86H78z" fill="rgba(126,203,221,0.95)" />
-      <path d="M98 188h42v46H98z" fill="#0a141e" />
-      <path d="m160 168 128-98M140 188l148-118" stroke="rgba(126,203,221,0.5)" />
-      <path d="m206 130 10-1-2 10" stroke="rgba(126,203,221,0.55)" />
-    </svg>
+      <div className="absolute inset-[15%] rounded-full bg-accent/[0.055] blur-3xl" />
+      <Suspense fallback={null}>
+        <DocsGalaxy />
+      </Suspense>
+    </div>
   );
 }
 
 export function DocsLanding() {
+  const featuredRailRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const updateScrollControls = useCallback(() => {
+    const rail = featuredRailRef.current;
+    if (!rail) return;
+    setCanScrollLeft(rail.scrollLeft > 2);
+    setCanScrollRight(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    const rail = featuredRailRef.current;
+    if (!rail) return;
+
+    const resizeObserver = new ResizeObserver(updateScrollControls);
+    const frame = requestAnimationFrame(updateScrollControls);
+    resizeObserver.observe(rail);
+    rail.addEventListener("scroll", updateScrollControls, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+      rail.removeEventListener("scroll", updateScrollControls);
+    };
+  }, [updateScrollControls]);
+
+  const scrollFeaturedExamples = (direction: -1 | 1) => {
+    const rail = featuredRailRef.current;
+    const row = rail?.firstElementChild;
+    const card = row?.querySelector<HTMLElement>("[data-featured-example]");
+    if (!rail || !row || !card) return;
+
+    const gap = Number.parseFloat(getComputedStyle(row).columnGap) || 0;
+    rail.scrollBy({ left: direction * (card.offsetWidth + gap), behavior: "smooth" });
+  };
+
   return (
     <>
       <main>
@@ -178,33 +215,76 @@ export function DocsLanding() {
           ))}
         </section>
 
-        <section className="mx-auto w-full max-w-[1380px] px-6 pb-24 pt-16 sm:px-10 lg:pb-28 lg:pt-20">
-          <div className="mb-7 flex items-end justify-between gap-6">
+        <section className="pt-16 lg:pt-20">
+          <div className="mx-auto mb-7 flex w-full max-w-[1380px] items-end justify-between gap-3 px-6 sm:px-10">
             <h2 className="font-display text-[clamp(30px,3vw,40px)] font-medium tracking-[-0.035em] text-ink">
               Featured Examples
             </h2>
-            <Link
-              to="/docs/examples"
-              replace
-              className="hidden min-h-11 items-center font-mono text-[12px] text-inkDim underline decoration-white/25 underline-offset-4 transition-colors hover:text-accent sm:inline-flex"
-            >
-              All examples&nbsp; →
-            </Link>
+            <div className="flex shrink-0 items-center gap-1">
+              <Link
+                to="/docs/examples"
+                replace
+                className="mr-2 hidden min-h-11 items-center font-mono text-[12px] text-inkDim underline decoration-white/25 underline-offset-4 transition-colors hover:text-accent sm:inline-flex"
+              >
+                All examples&nbsp; →
+              </Link>
+              <button
+                type="button"
+                aria-label="Scroll featured examples left"
+                disabled={!canScrollLeft}
+                onClick={() => scrollFeaturedExamples(-1)}
+                className="inline-flex size-11 items-center justify-center text-inkDim transition-[color,opacity,transform] hover:-translate-x-0.5 hover:text-accent disabled:pointer-events-none disabled:opacity-25"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="size-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.6}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Scroll featured examples right"
+                disabled={!canScrollRight}
+                onClick={() => scrollFeaturedExamples(1)}
+                className="inline-flex size-11 items-center justify-center text-inkDim transition-[color,opacity,transform] hover:translate-x-0.5 hover:text-accent disabled:pointer-events-none disabled:opacity-25"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="size-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.6}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div className="-mr-6 overflow-x-auto pb-4 pr-6 [scrollbar-color:rgba(126,203,221,0.28)_transparent] [scrollbar-width:thin] sm:-mr-10 sm:pr-10">
-            <div className="flex w-max gap-3">
+          <div ref={featuredRailRef} className="docs-featured-rail">
+            <div className="docs-featured-row flex w-max gap-[10px]">
               {FEATURED_EXAMPLES.map((example) => (
                 <Link
                   key={example.to}
                   to={example.to}
                   replace
-                  className="group relative aspect-[4/5] w-[min(75vw,250px)] shrink-0 overflow-hidden rounded-md border border-white/[0.12] bg-card"
+                  data-featured-example
+                  className="group relative h-[380px] w-[min(82vw,316px)] shrink-0 overflow-hidden rounded-lg border border-white/[0.12] bg-card"
                 >
                   <img
                     src={example.image}
                     alt=""
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
+                    className="absolute inset-0 h-full w-full scale-[1.08] object-cover transition-transform duration-300 ease-out group-hover:scale-100"
                     loading="lazy"
                   />
                   <span
@@ -218,60 +298,37 @@ export function DocsLanding() {
                     <span className="mt-3 text-[13px] leading-[1.5] text-inkDim">
                       {example.description}
                     </span>
-                    <span
+                    <svg
+                      viewBox="0 0 24 24"
                       aria-hidden="true"
-                      className="mt-4 text-[16px] text-accent transition-transform group-hover:translate-x-1"
+                      className="mt-4 size-5 text-accent transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-1"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      →
-                    </span>
+                      <path d="M7 17 17 7M7 7h10v10" />
+                    </svg>
                   </span>
                 </Link>
               ))}
             </div>
           </div>
 
-          <Link
-            to="/docs/examples"
-            replace
-            className="mt-4 inline-flex min-h-11 items-center font-mono text-[12px] text-inkDim underline decoration-white/25 underline-offset-4 sm:hidden"
-          >
-            All examples&nbsp; →
-          </Link>
-        </section>
-      </main>
-
-      <footer className="border-t border-white/[0.1]">
-        <div className="mx-auto flex w-full max-w-[1380px] flex-col gap-5 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10">
-          <div className="flex items-center gap-4">
-            <BrandLockup />
-            <span className="font-mono text-[10px] text-inkFaint">© Burla 2026</span>
-          </div>
-          <nav className="flex flex-wrap items-center gap-x-6 gap-y-2" aria-label="Docs footer">
-            <Link
-              to="/docs/get-started"
-              replace
-              className="inline-flex min-h-11 items-center text-[12px] text-inkFaint transition-colors hover:text-accent"
-            >
-              Getting Started
-            </Link>
+          <div className="mx-auto w-full max-w-[1380px] px-6 sm:hidden">
             <Link
               to="/docs/examples"
               replace
-              className="inline-flex min-h-11 items-center text-[12px] text-inkFaint transition-colors hover:text-accent"
+              className="mt-4 inline-flex min-h-11 items-center font-mono text-[12px] text-inkDim underline decoration-white/25 underline-offset-4"
             >
-              Examples
+              All examples&nbsp; →
             </Link>
-            <a
-              href="https://github.com/Burla-Cloud/burla"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-11 items-center text-[12px] text-inkFaint transition-colors hover:text-accent"
-            >
-              GitHub
-            </a>
-          </nav>
-        </div>
-      </footer>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
     </>
   );
 }

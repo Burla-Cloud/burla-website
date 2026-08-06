@@ -43,9 +43,7 @@ export function Finale() {
         </Reveal>
       </div>
 
-      <div className="mt-40 sm:mt-52">
-        <Footer />
-      </div>
+      <Footer />
     </section>
   );
 }

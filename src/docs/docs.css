@@ -635,3 +635,27 @@
   line-height: 1.6;
   color: rgba(234, 246, 250, 0.68);
 }
+
+/* The landing-page example rail owns the full viewport width, while its first
+   card stays aligned with the centered page content. */
+.docs-featured-rail {
+  width: 100vw;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.docs-featured-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.docs-featured-row {
+  padding-inline: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .docs-featured-row {
+    padding-inline: max(2.5rem, calc((100vw - 1380px) / 2 + 2.5rem));
+  }
+}

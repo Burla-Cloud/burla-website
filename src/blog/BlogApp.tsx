@@ -61,7 +61,7 @@ export default function BlogApp() {
 
       <Nav />
 
-      <main className="relative z-10 px-6 pb-28 pt-32 sm:px-10 sm:pb-36 sm:pt-40">
+      <main className="relative z-10 px-6 pt-32 sm:px-10 sm:pt-40">
         <div className="mx-auto max-w-[760px]">
           <p className="mb-4 font-mono text-[12px] text-accent/80">
             This is our only blog post so far :)

@@ -1,0 +1,26 @@
+import { useRef } from "react";
+import { Canvas } from "@react-three/fiber";
+import { useReducedMotion } from "framer-motion";
+import { Galaxy } from "../three/Galaxy";
+
+export default function DocsGalaxy() {
+  const descent = useRef(0);
+  const reducedMotion = useReducedMotion() ?? false;
+
+  return (
+    <Canvas
+      className="!absolute inset-0"
+      dpr={[1, 1.5]}
+      frameloop={reducedMotion ? "demand" : "always"}
+      gl={{
+        alpha: true,
+        antialias: false,
+        powerPreference: "high-performance",
+        stencil: true,
+      }}
+      camera={{ position: [0, 40, 124], fov: 40, near: 0.1, far: 320 }}
+    >
+      <Galaxy descent={descent} reducedMotion={reducedMotion} />
+    </Canvas>
+  );
+}

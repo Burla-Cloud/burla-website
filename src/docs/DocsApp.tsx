@@ -342,7 +342,7 @@ export default function DocsApp() {
         // Modal's outer frame leaves a fixed 16px viewport gutter. Inside it,
         // the responsive sidebar track consumes 2/10 of the width (minimum
         // 256px), then becomes 352px at 2xl.
-        className="relative z-10 mx-4 pb-24 pt-0 min-[1152px]:pb-32 min-[1152px]:pt-[74px]"
+        className="relative z-10 mx-4 pt-0 min-[1152px]:pt-[74px]"
       >
         <div className="min-[1152px]:grid min-[1152px]:grid-cols-[var(--docs-sidebar-w)_minmax(0,1fr)]">
           <aside className="hidden min-[1152px]:block">
@@ -365,7 +365,7 @@ export default function DocsApp() {
                   : "grid min-[1152px]:grid-cols-[minmax(0,8fr)_minmax(0,3fr)] min-[1152px]:gap-4"
               }`}
             >
-              <main className="min-w-0 pb-12 pt-6 min-[1152px]:pt-10">
+              <main className="min-w-0 pt-6 min-[1152px]:pt-10">
                 <DocPage route={route} />
               </main>
 
