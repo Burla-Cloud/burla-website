@@ -76,7 +76,9 @@ export default function BlogApp() {
         </div>
       </main>
 
-      <div className="relative z-10">
+      {/* Doubles the finale's own top padding so the post ends well before the
+          call to action starts. */}
+      <div className="relative z-10 pt-24 sm:pt-32">
         <Finale />
       </div>
     </div>

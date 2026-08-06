@@ -19,21 +19,16 @@ export function Finale() {
           </Reveal>
 
           <Reveal className="w-full text-left">
-            <h2 className="text-[clamp(1.9rem,4.8vw,3.9rem)] font-[830] leading-[1.02] tracking-[-0.02em] text-ink">
+            <h2 className="h-big text-ink">
               <span className="text-accent">{FINALE.headline[0]} </span>
               {FINALE.headline[1]}
             </h2>
             <p className="mt-6 max-w-[52ch] text-base leading-relaxed text-inkDim sm:text-lg">
-              <span className="sm:block">{FINALE.sub[0]} </span>
-              <span className="sm:block">{FINALE.sub[1]}</span>
+              {FINALE.sub}
             </p>
+            <TryCommands className="mt-8" />
           </Reveal>
         </div>
-
-        {/* Centered under both columns: the commands close the section. */}
-        <Reveal className="mt-10 flex justify-center sm:mt-12" y={20}>
-          <TryCommands />
-        </Reveal>
       </div>
 
       <Footer />

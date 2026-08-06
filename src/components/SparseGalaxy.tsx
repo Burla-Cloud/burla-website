@@ -4,8 +4,8 @@ import { useReducedMotion } from "framer-motion";
 import { Galaxy } from "../three/Galaxy";
 
 // A quieter disc than the hero's: fewer stars with a stronger radial falloff,
-// so the rim fades out instead of ending abruptly, at full brightness. Shared
-// by the finale call to action and the docs landing hero.
+// so the rim fades out instead of ending abruptly, at full brightness. The docs
+// hero runs its own denser variant.
 export function SparseGalaxy() {
   const descent = useRef(0);
   const reducedMotion = useReducedMotion() ?? false;
