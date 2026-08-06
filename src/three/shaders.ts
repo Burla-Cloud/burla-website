@@ -80,11 +80,11 @@ export const galaxyFragment = /* glsl */ `
       density = 1.0;
     } else if (vType < 2.5) {
       lit = mix(uDustColor, uArmColor, vSeed * 0.3);
-      density = 0.62;
+      density = 0.7;
     } else {
       // far starfield
-      lit = mix(uDustColor, uArmColor, 0.2);
-      density = 0.5;
+      lit = mix(uDustColor, uArmColor, 0.3);
+      density = 0.58;
     }
 
     float act = clamp(vAct, 0.0, 1.0);

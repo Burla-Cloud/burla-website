@@ -193,13 +193,13 @@ export function Galaxy({ descent, reducedMotion, density = 1, edgeFade = 0 }: Pr
       // scroll-zoom hero.
       uIgnite: { value: 1 },
       uPass: { value: 0 },
-      uSize: { value: 2.7 },
+      uSize: { value: 2.85 },
       uPixelRatio: { value: Math.min(window.devicePixelRatio, 1.75) },
-      uCoreColor: { value: col("#EAF6FA") },
-      uArmColor: { value: col("#7ECBDD") },
-      uDustColor: { value: col("#2A7F96") },
-      uEmberColor: { value: col("#183847") },
-      uFlashColor: { value: col("#DDF8FF") },
+      uCoreColor: { value: col("#F4FBFE") },
+      uArmColor: { value: col("#96DDF0") },
+      uDustColor: { value: col("#3A9DB6") },
+      uEmberColor: { value: col("#1D4453") },
+      uFlashColor: { value: col("#EAFCFF") },
     };
 
     return { geometry, uniforms };
@@ -217,8 +217,8 @@ export function Galaxy({ descent, reducedMotion, density = 1, edgeFade = 0 }: Pr
         return {
           position: [p.x, p.y - 0.5, p.z] as const,
           scale: 10 + hash01(seed + 20) * 14,
-          baseOpacity: 0.05 + hash01(seed + 24) * 0.07,
-          color: n % 2 === 0 ? "#7ECBDD" : "#2A7F96",
+          baseOpacity: 0.065 + hash01(seed + 24) * 0.085,
+          color: n % 2 === 0 ? "#96DDF0" : "#3A9DB6",
         };
       }),
     [],
@@ -276,7 +276,7 @@ export function Galaxy({ descent, reducedMotion, density = 1, edgeFade = 0 }: Pr
     // Core flare, breathing slowly; retired along with the disc.
     const pulse = 0.92 + 0.08 * Math.sin(t * 2.1);
     const core = coreRef.current;
-    (core.material as THREE.SpriteMaterial).opacity = 0.7 * pulse * 0.55 * (1 - pass);
+    (core.material as THREE.SpriteMaterial).opacity = 0.7 * pulse * 0.68 * (1 - pass);
     const s = 5.5 + 3.2 * pulse;
     core.scale.set(s, s, 1);
   });
@@ -345,9 +345,9 @@ export function Galaxy({ descent, reducedMotion, density = 1, edgeFade = 0 }: Pr
         <group ref={cometsRef}>
           <lineSegments geometry={cometGeometry}>
             <lineBasicMaterial
-              color="#7ECBDD"
+              color="#96DDF0"
               transparent
-              opacity={0.62}
+              opacity={0.7}
               depthWrite={false}
               blending={THREE.AdditiveBlending}
             />
@@ -357,7 +357,7 @@ export function Galaxy({ descent, reducedMotion, density = 1, edgeFade = 0 }: Pr
         <sprite ref={coreRef}>
           <spriteMaterial
             map={texture}
-            color="#7ECBDD"
+            color="#96DDF0"
             transparent
             depthWrite={false}
             blending={THREE.AdditiveBlending}

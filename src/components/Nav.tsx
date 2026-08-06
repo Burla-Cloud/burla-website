@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { NAV } from "../content";
+import { LINKS, NAV } from "../content";
 import { BrandLockup } from "./BrandLockup";
 import { formatStars, useStars } from "../lib/useRepoStats";
+import { prefetchDocsApp, prefetchDocsHero } from "../lib/prefetchDocs";
 
 /**
  * The site navbar. `sections` is an optional slot rendered beside the brand,
@@ -19,6 +20,18 @@ export function Nav({ sections }: { sections?: ReactNode }) {
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  // Warm the docs hero chunk once this page is idle so the galaxy is already
+  // compiled when someone clicks through.
+  useEffect(() => {
+    const idle = window.requestIdleCallback;
+    if (idle) {
+      const handle = idle(() => prefetchDocsHero(), { timeout: 3000 });
+      return () => window.cancelIdleCallback?.(handle);
+    }
+    const timer = window.setTimeout(prefetchDocsHero, 1200);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -38,9 +51,11 @@ export function Nav({ sections }: { sections?: ReactNode }) {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-500 ease-out ${
-        scrolled || menuOpen
+        menuOpen
           ? "border-white/[0.09] bg-[#03080d] shadow-[0_12px_32px_rgba(0,0,0,0.28)]"
-          : "border-transparent bg-[#03080d]/0"
+          : scrolled
+            ? "border-white/[0.09] bg-[#03080d]/55 shadow-[0_12px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+            : "border-transparent bg-[#03080d]/0"
       }`}
     >
       <div className="relative flex min-h-16 items-center justify-between gap-8 px-6 sm:px-10">
@@ -54,8 +69,21 @@ export function Nav({ sections }: { sections?: ReactNode }) {
               const linkClass =
                 "group flex min-h-11 items-center gap-3 font-mono text-[15px] font-medium text-ice transition-colors hover:text-accent";
               if (l.href.startsWith("/")) {
+                const warm =
+                  l.href === LINKS.docs
+                    ? () => {
+                        prefetchDocsHero();
+                        prefetchDocsApp();
+                      }
+                    : undefined;
                 return (
-                  <Link key={l.label} to={l.href} className={linkClass}>
+                  <Link
+                    key={l.label}
+                    to={l.href}
+                    className={linkClass}
+                    onPointerEnter={warm}
+                    onFocus={warm}
+                  >
                     {l.label}
                   </Link>
                 );

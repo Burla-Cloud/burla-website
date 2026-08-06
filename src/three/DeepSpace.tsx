@@ -48,7 +48,7 @@ const vertex = /* glsl */ `
 
     vSeed = aSeed;
     vTwinkle = twinkle;
-    vBright = mix(0.72, 1.15, aDepth) * (1.0 - 0.3 * smoothstep(90.0, 190.0, dist));
+    vBright = mix(0.84, 1.32, aDepth) * (1.0 - 0.3 * smoothstep(90.0, 190.0, dist));
     gl_PointSize = px * uPixelRatio;
     gl_Position = projectionMatrix * mv;
 
@@ -74,9 +74,9 @@ const fragment = /* glsl */ `
     // Hard little core with a faint halo, so a one-pixel star still lands.
     float core = pow(1.0 - smoothstep(0.0, 0.5, d), 0.85);
 
-    vec3 teal = vec3(0.165, 0.5, 0.59);
-    vec3 cyan = vec3(0.494, 0.796, 0.867);
-    vec3 ice = vec3(0.918, 0.965, 0.98);
+    vec3 teal = vec3(0.227, 0.616, 0.714);
+    vec3 cyan = vec3(0.588, 0.867, 0.941);
+    vec3 ice = vec3(0.957, 0.984, 1.0);
     vec3 color = mix(teal, cyan, smoothstep(0.18, 0.82, vSeed));
     color = mix(color, ice, step(0.78, vSeed) * 0.85);
 

@@ -107,8 +107,42 @@
       0 0 28px rgba(3, 8, 13, 0.92);
   }
 
+  /* Lockup only: a lit top edge and a short extrusion below give the wordmark
+     the same beveled read as the gradient-filled marks beside it. */
+  .text-shadow-logo {
+    text-shadow:
+      0 -1px 0 rgba(226, 250, 255, 0.5),
+      0 1px 0 rgba(6, 26, 34, 0.9),
+      0 2px 1px rgba(2, 12, 18, 0.75),
+      0 3px 6px rgba(0, 0, 0, 0.65),
+      0 0 22px rgba(150, 221, 240, 0.3);
+  }
+
   .tnum {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Touching the lockup blinks its trailing block four times, the way a shell
+     cursor blinks. The class is added and removed by BrandLockup so the full
+     sequence plays even after the pointer has moved on. */
+  @keyframes logo-caret-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .logo-caret-blink {
+    animation: logo-caret-blink 0.75s steps(1, end) 4;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo-caret-blink {
+      animation: none;
+    }
   }
 }
 
