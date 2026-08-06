@@ -4,6 +4,7 @@
 
 export const LINKS = {
   docs: "/docs",
+  getStarted: "/docs/get-started",
   github: "https://github.com/Burla-Cloud/burla",
   email: "mailto:jake@burla.dev",
 };
@@ -299,8 +300,7 @@ export const FOOTER = {
     {
       title: "Product",
       links: [
-        { label: "Documentation", href: LINKS.docs },
-        { label: "Getting started", href: "/docs/get-started" },
+        { label: "Getting started", href: LINKS.getStarted },
         { label: "API reference", href: "/docs/api-reference" },
         { label: "Examples", href: WORKLOADS.moreHref },
       ],

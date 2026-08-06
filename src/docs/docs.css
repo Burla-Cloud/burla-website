@@ -25,6 +25,35 @@
   }
 }
 
+/* Match Modal's quiet overlay scrollers: reserve no visual chrome until the
+   user is interacting with the scrollable region. */
+.docs-scroller {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.docs-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.docs-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.docs-scroller::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.docs-scroller:hover {
+  scrollbar-color: rgba(126, 203, 221, 0.28) transparent;
+}
+
+.docs-scroller:hover::-webkit-scrollbar-thumb {
+  background: rgba(126, 203, 221, 0.28);
+}
+
 .doc-inline-code,
 .doc-prose :not(pre) > code {
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
