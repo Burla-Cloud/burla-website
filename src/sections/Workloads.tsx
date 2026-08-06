@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 import { Reveal } from "../components/Reveal";
-import { ExampleIcon } from "../components/ExampleIcon";
+import { FeaturedExamplesRail } from "../components/FeaturedExamplesRail";
 import { DOMAIN_COLORS, WORKLOADS } from "../content";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -71,8 +71,9 @@ export function Workloads() {
       className="relative py-24 sm:py-32"
       aria-labelledby="workloads-title"
     >
-      <div className="container-x">
-        <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-8">
+      <FeaturedExamplesRail
+        align="site"
+        headerLeft={
           <Reveal>
             <h2
               id="workloads-title"
@@ -85,6 +86,8 @@ export function Workloads() {
               <CyclingHeadingLine />
             </h2>
           </Reveal>
+        }
+        headerRight={
           <Reveal delay={80} y={12}>
             <Link
               to={WORKLOADS.moreHref}
@@ -99,36 +102,8 @@ export function Workloads() {
               </span>
             </Link>
           </Reveal>
-        </header>
-
-        <Reveal className="mt-14" y={16}>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {WORKLOADS.examples.map((ex) => (
-              <Link
-                key={ex.href}
-                to={ex.href}
-                className="group flex h-full flex-col rounded-xl border border-hairline bg-card/60 px-5 py-5 transition-[border-color,background-color] duration-200 hover:border-accent/60 hover:bg-card/80"
-              >
-                <div className="flex items-start justify-between">
-                  <span className="text-accent/70 transition-colors duration-200 group-hover:text-accent">
-                    <ExampleIcon icon={ex.icon} />
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="text-inkFaint transition-[color,transform] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent"
-                  >
-                    →
-                  </span>
-                </div>
-                <h3 className="mt-4 font-display text-[16.5px] font-medium leading-[1.3] tracking-[-0.01em] text-ink">
-                  {ex.title}
-                </h3>
-                <p className="mt-1.5 text-[13.5px] leading-relaxed text-inkDim">{ex.desc}</p>
-              </Link>
-            ))}
-          </div>
-        </Reveal>
-      </div>
+        }
+      />
     </section>
   );
 }

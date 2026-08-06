@@ -95,21 +95,21 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         title: "Embed 50K Wikipedia articles",
         description:
           "Generate Wikipedia embeddings across A100 workers. Build a searchable index when the job completes.",
-        icon: "gpu",
+        icon: "embed",
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/parallel-hyperparameter-tuning",
         title: "Tune XGBoost on 1,000 CPUs",
         description:
           "Evaluate a large hyperparameter grid in parallel. Keep the best model and its metrics.",
-        icon: "sliders",
+        icon: "peak",
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/ml-inference-batch",
         title: "Run batch LLM inference",
         description:
           "Run offline model inference as a distributed job. Avoid maintaining an endpoint for batch work.",
-        icon: "spiral",
+        icon: "net",
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/met-weirdest-art",
@@ -130,7 +130,7 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         title: "Scan 2.76B NYC taxi trips",
         description:
           "Scan every monthly taxi dataset in parallel. Find neighborhoods whose activity disappeared.",
-        icon: "route",
+        icon: "city",
       },
       {
         route: "/docs/all-examples/data-processing-examples/world-photo-index",
@@ -151,14 +151,14 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         title: "Audit 5,000 Parquet files",
         description:
           "Inspect every Parquet shard in parallel. Combine schema and quality findings into one report.",
-        icon: "parquet",
+        icon: "scan",
       },
       {
         route: "/docs/all-examples/data-processing-examples/pandas-apply-parallel",
         title: "Parallelize pandas apply",
         description:
           "Keep a familiar pandas transformation. Distribute it across a dataset that no longer fits one machine.",
-        icon: "database",
+        icon: "table",
       },
     ],
   },
@@ -172,7 +172,7 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         title: "ETL 10K S3 files to Postgres",
         description:
           "Transform a large file drop into database rows. Run the workflow without adopting an orchestrator.",
-        icon: "database",
+        icon: "etl",
       },
       {
         route: "/docs/all-examples/production-data-jobs/image-dataset-resize",
@@ -186,7 +186,7 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         title: "Run a 2M-user API backfill",
         description:
           "Backfill millions of records through a rate-limited API. Bound concurrency without giving up parallelism.",
-        icon: "sliders",
+        icon: "gate",
       },
       {
         route: "/docs/all-examples/production-data-jobs/parallel-web-scraping",

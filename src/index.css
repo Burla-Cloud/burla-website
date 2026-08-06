@@ -206,3 +206,113 @@
     animation: none;
   }
 }
+
+/* ---- featured example rail --------------------------------------------- */
+
+/* The rail owns the full viewport width, while its first card stays aligned
+   with the centered page content (--rail-max matches the page container).
+   Cards never hit a hard viewport edge: they dissolve out at the left edge of
+   the page and ghost in through a roughly card-wide region on the right, so
+   the next example is visible in the margin without ever being clipped. */
+.docs-featured-rail {
+  --rail-fade-right: min(320px, 45vw);
+  --rail-max: 1380px;
+  width: 100vw;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 2.5rem,
+    #000 calc(100% - var(--rail-fade-right)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 2.5rem,
+    #000 calc(100% - var(--rail-fade-right)),
+    transparent 100%
+  );
+}
+
+.docs-featured-rail--site {
+  --rail-max: 1200px;
+}
+
+.docs-featured-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* Extra end padding lets the last card scroll clear of the right fade zone. */
+.docs-featured-row {
+  padding-left: 1.5rem;
+  padding-right: calc(var(--rail-fade-right) + 1.5rem);
+}
+
+@media (min-width: 640px) {
+  .docs-featured-row {
+    padding-left: max(2.5rem, calc((100vw - var(--rail-max)) / 2 + 2.5rem));
+    padding-right: calc(var(--rail-fade-right) + 2.5rem);
+  }
+}
+
+/* ---- wireframe example marks ------------------------------------------- */
+
+.example-mark {
+  position: relative;
+  width: 100%;
+  height: 144px;
+}
+
+.example-mark svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.example-mark-glow {
+  position: absolute;
+  inset: 18% 20% 12%;
+  border-radius: 999px;
+  background: rgba(126, 203, 221, 0.1);
+  filter: blur(26px);
+  transition:
+    background-color 220ms ease,
+    transform 220ms ease;
+}
+
+.group:hover .example-mark-glow {
+  background: rgba(126, 203, 221, 0.16);
+  transform: scale(1.05);
+}
+
+.example-mark-line {
+  stroke: #7ecbdd;
+  transition: stroke 200ms ease;
+}
+
+.group:hover .example-mark-line {
+  stroke: #a3dfec;
+}
+
+.example-mark-accent {
+  stroke: #eaf6fa;
+}
+
+.example-mark-live {
+  stroke: #ff806c;
+}
+
+.example-mark-node {
+  fill: #7ecbdd;
+}
+
+.example-mark-node-live {
+  fill: #ff806c;
+}

@@ -1,7 +1,8 @@
 import { useId, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ExampleIcon } from "../components/ExampleIcon";
+import { ExampleIcon3D } from "../components/ExampleIcon3D";
+import type { Mark3DKind } from "../components/ExampleIcon3D";
 import { ALL_EXAMPLE_CATEGORIES } from "./examples";
 import type {
   ExampleCard as ExampleCardData,
@@ -11,24 +12,35 @@ import type {
 const COLLAPSED_EXAMPLE_COUNT = 3;
 const DISCLOSURE_EASE = [0.16, 1, 0.3, 1] as const;
 
-function ExampleCard({ example }: { example: ExampleCardData }) {
+const CARD_GRID_CLASSES =
+  "grid gap-4 sm:grid-cols-[repeat(2,minmax(0,300px))] sm:justify-start min-[1280px]:grid-cols-[repeat(3,minmax(0,280px))]";
+
+function ExampleCard({
+  example,
+  reducedMotion,
+}: {
+  example: ExampleCardData;
+  reducedMotion: boolean;
+}) {
   return (
     <Link
       to={example.route}
-      className="group flex min-h-[180px] flex-col rounded-xl border border-hairline bg-card/60 p-5 transition-[border-color,background-color] duration-200 hover:border-accent/60 hover:bg-card/80"
+      className="group relative flex min-h-[330px] flex-col overflow-hidden rounded-xl border border-hairline bg-card/60 p-5 transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-accent/60 hover:bg-card/80"
     >
-      <div className="flex items-start justify-between">
-        <span className="text-accent/70 transition-colors duration-200 group-hover:text-accent">
-          <ExampleIcon icon={example.icon} />
-        </span>
-        <span
-          aria-hidden="true"
-          className="text-inkFaint transition-[color,transform] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent"
-        >
-          →
-        </span>
+      <span
+        aria-hidden="true"
+        className="absolute right-5 top-5 z-10 text-inkFaint transition-[color,transform] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent"
+      >
+        →
+      </span>
+      <div className="-mx-1 -mt-1">
+        <ExampleIcon3D
+          icon={example.icon as Mark3DKind}
+          reducedMotion={reducedMotion}
+          seed={example.route}
+        />
       </div>
-      <h3 className="mt-5 font-display text-[17px] font-medium leading-[1.28] tracking-[-0.01em] text-ink">
+      <h3 className="mt-3 font-display text-[17px] font-medium leading-[1.28] tracking-[-0.01em] text-ink">
         {example.title}
       </h3>
       <p className="mt-2 text-[13.5px] leading-[1.55] text-inkDim">{example.description}</p>
@@ -69,9 +81,9 @@ function ExampleCategory({ category }: { category: ExampleCategoryData }) {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 min-[1280px]:grid-cols-3">
+      <div className={CARD_GRID_CLASSES}>
         {initialExamples.map((example) => (
-          <ExampleCard key={example.route} example={example} />
+          <ExampleCard key={example.route} example={example} reducedMotion={reducedMotion} />
         ))}
       </div>
 
@@ -88,9 +100,13 @@ function ExampleCategory({ category }: { category: ExampleCategoryData }) {
             }}
             className="overflow-hidden"
           >
-            <div className="grid gap-4 pt-4 sm:grid-cols-2 min-[1280px]:grid-cols-3">
+            <div className={`${CARD_GRID_CLASSES} pt-4`}>
               {additionalExamples.map((example) => (
-                <ExampleCard key={example.route} example={example} />
+                <ExampleCard
+                  key={example.route}
+                  example={example}
+                  reducedMotion={reducedMotion}
+                />
               ))}
             </div>
           </motion.div>

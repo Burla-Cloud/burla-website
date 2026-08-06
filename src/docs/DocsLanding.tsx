@@ -1,7 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { Footer } from "../components/Footer";
-import { WORKLOADS } from "../content";
+import { FeaturedExamplesRail } from "../components/FeaturedExamplesRail";
 
 const DocsGalaxy = lazy(() => import("./DocsGalaxy"));
 
@@ -31,40 +31,6 @@ const RESOURCES = [
     icon: "terminal",
   },
 ] as const;
-
-const FEATURED_COVERS: Record<string, string> = {
-  "/docs/featured-examples/process-2.4tb-of-parquet-files-in-76s":
-    "/docs-assets/more-examples/query-2-4tb-parquet-cover.webp",
-  "/docs/featured-examples/airbnb-burla":
-    "/docs-assets/more-examples/airbnb-burla-cover.webp",
-  "/docs/featured-examples/multi-stage-genomic-pipeline":
-    "/docs-assets/more-examples/multi-stage-genomic-pipeline-cover.webp",
-  "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods":
-    "/docs-assets/more-examples/nyc-ghost-neighborhoods-cover.webp",
-  "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo":
-    "/docs-assets/more-examples/gpu-embedding-demo-cover.webp",
-  "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day":
-    "/docs-assets/more-examples/ghcn-rainiest-day-cover.webp",
-  "/docs/all-examples/data-processing-examples/world-photo-index":
-    "/docs-assets/more-examples/world-photo-index-cover.webp",
-  "/docs/featured-examples/arxiv-fossils":
-    "/docs-assets/more-examples/arxiv-fossils-cover.webp",
-  "/docs/all-examples/ml-embeddings-and-search/parallel-hyperparameter-tuning":
-    "/docs-assets/more-examples/parallel-hyperparameter-tuning-cover.webp",
-  "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing":
-    "/docs-assets/more-examples/gdal-raster-processing-cover.webp",
-  "/docs/all-examples/production-data-jobs/monte-carlo-simulation":
-    "/docs-assets/more-examples/monte-carlo-simulation-cover.webp",
-  "/docs/featured-examples/amazon-review-distiller":
-    "/docs-assets/more-examples/amazon-review-distiller-cover.webp",
-};
-
-const FEATURED_EXAMPLES = WORKLOADS.examples.map((example) => ({
-  title: example.title,
-  description: example.desc,
-  to: example.href,
-  image: FEATURED_COVERS[example.href],
-}));
 
 function ResourceIcon({ icon }: { icon: (typeof RESOURCES)[number]["icon"] }) {
   return (
@@ -122,43 +88,6 @@ function HeroGraphic() {
 }
 
 export function DocsLanding() {
-  const featuredRailRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  const updateScrollControls = useCallback(() => {
-    const rail = featuredRailRef.current;
-    if (!rail) return;
-    setCanScrollLeft(rail.scrollLeft > 2);
-    setCanScrollRight(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 2);
-  }, []);
-
-  useEffect(() => {
-    const rail = featuredRailRef.current;
-    if (!rail) return;
-
-    const resizeObserver = new ResizeObserver(updateScrollControls);
-    const frame = requestAnimationFrame(updateScrollControls);
-    resizeObserver.observe(rail);
-    rail.addEventListener("scroll", updateScrollControls, { passive: true });
-
-    return () => {
-      cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
-      rail.removeEventListener("scroll", updateScrollControls);
-    };
-  }, [updateScrollControls]);
-
-  const scrollFeaturedExamples = (direction: -1 | 1) => {
-    const rail = featuredRailRef.current;
-    const row = rail?.firstElementChild;
-    const card = row?.querySelector<HTMLElement>("[data-featured-example]");
-    if (!rail || !row || !card) return;
-
-    const gap = Number.parseFloat(getComputedStyle(row).columnGap) || 0;
-    rail.scrollBy({ left: direction * (card.offsetWidth + gap), behavior: "smooth" });
-  };
-
   return (
     <>
       <main>
@@ -216,105 +145,24 @@ export function DocsLanding() {
         </section>
 
         <section className="pt-16 lg:pt-20">
-          <div className="mx-auto mb-7 flex w-full max-w-[1380px] items-end justify-between gap-3 px-6 sm:px-10">
-            <h2 className="font-display text-[clamp(30px,3vw,40px)] font-medium tracking-[-0.035em] text-ink">
-              Featured Examples
-            </h2>
-            <div className="flex shrink-0 items-center gap-1">
+          <FeaturedExamplesRail
+            align="docs"
+            replaceLinks
+            headerLeft={
+              <h2 className="font-display text-[clamp(30px,3vw,40px)] font-medium tracking-[-0.035em] text-ink">
+                Featured Examples
+              </h2>
+            }
+            headerRight={
               <Link
                 to="/docs/examples"
                 replace
-                className="mr-2 hidden min-h-11 items-center font-mono text-[12px] text-inkDim underline decoration-white/25 underline-offset-4 transition-colors hover:text-accent sm:inline-flex"
+                className="mr-1 hidden min-h-11 items-center gap-1.5 font-mono text-[13.5px] font-medium text-ink underline decoration-accent/50 underline-offset-4 transition-colors hover:text-accent sm:inline-flex"
               >
-                All examples&nbsp; →
+                All examples&nbsp;→
               </Link>
-              <button
-                type="button"
-                aria-label="Scroll featured examples left"
-                disabled={!canScrollLeft}
-                onClick={() => scrollFeaturedExamples(-1)}
-                className="inline-flex size-11 items-center justify-center text-inkDim transition-[color,opacity,transform] hover:-translate-x-0.5 hover:text-accent disabled:pointer-events-none disabled:opacity-25"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  className="size-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                aria-label="Scroll featured examples right"
-                disabled={!canScrollRight}
-                onClick={() => scrollFeaturedExamples(1)}
-                className="inline-flex size-11 items-center justify-center text-inkDim transition-[color,opacity,transform] hover:translate-x-0.5 hover:text-accent disabled:pointer-events-none disabled:opacity-25"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  className="size-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div ref={featuredRailRef} className="docs-featured-rail">
-            <div className="docs-featured-row flex w-max gap-[10px]">
-              {FEATURED_EXAMPLES.map((example) => (
-                <Link
-                  key={example.to}
-                  to={example.to}
-                  replace
-                  data-featured-example
-                  className="group relative h-[380px] w-[min(82vw,316px)] shrink-0 overflow-hidden rounded-lg border border-white/[0.12] bg-card"
-                >
-                  <img
-                    src={example.image}
-                    alt=""
-                    className="absolute inset-0 h-full w-full scale-[1.08] object-cover transition-transform duration-300 ease-out group-hover:scale-100"
-                    loading="lazy"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,13,0.02)_18%,rgba(3,8,13,0.34)_48%,rgba(3,8,13,0.96)_100%)]"
-                  />
-                  <span className="absolute inset-x-0 bottom-0 flex min-h-[58%] flex-col justify-end p-5">
-                    <strong className="font-display text-[19px] font-medium leading-[1.18] tracking-[-0.02em] text-ink">
-                      {example.title}
-                    </strong>
-                    <span className="mt-3 text-[13px] leading-[1.5] text-inkDim">
-                      {example.description}
-                    </span>
-                    <svg
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      className="mt-4 size-5 text-accent transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-1"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.6}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M7 17 17 7M7 7h10v10" />
-                    </svg>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
+            }
+          />
 
           <div className="mx-auto w-full max-w-[1380px] px-6 sm:hidden">
             <Link
