@@ -255,7 +255,7 @@ export const FEATURES = {
 // ---------------------------------------------------------------------------
 
 export const FINALE = {
-  headline: ["Try Burla now", "with two commands."],
+  headline: ["Try Burla", "with two commands."],
   // One short reassurance line; the terminal block below carries the actual
   // instructions so the copy never repeats them.
   sub: "Zero deployment required. Burla can run the dashboard locally and boot VMs using local cloud credentials.",
