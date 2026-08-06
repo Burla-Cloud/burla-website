@@ -18,7 +18,6 @@ const COUNT_ARM = 15000;
 const COUNT_CORE = 3000;
 const COUNT_DUST = 7000;
 const COUNT_FAR = 2600;
-const COUNT = COUNT_ARM + COUNT_CORE + COUNT_DUST + COUNT_FAR;
 
 const NEBULA_COUNT = 14;
 const COMET_COUNT = 26;
@@ -38,6 +37,13 @@ type Props = {
   /** Page scroll in viewport heights; drives the galaxy's exit upward. */
   descent: { current: number };
   reducedMotion: boolean;
+  /** 0-1 particle count multiplier. The finale renders a sparser disc. */
+  density?: number;
+  /**
+   * 0-1 radial concentration. Higher values pull stars toward the core so
+   * star density thins out naturally at the rim instead of ending abruptly.
+   */
+  edgeFade?: number;
 };
 
 // Resting height of the disc: lifts the core to sit just above the viewport
@@ -64,7 +70,7 @@ function armPoint(r: number, arm: number, seed: number) {
   };
 }
 
-export function Galaxy({ descent, reducedMotion }: Props) {
+export function Galaxy({ descent, reducedMotion, density = 1, edgeFade = 0 }: Props) {
   const groupRef = useRef<THREE.Group>(null!);
   const discRef = useRef<THREE.Group>(null!);
   const cometsRef = useRef<THREE.Group>(null!);
@@ -75,11 +81,23 @@ export function Galaxy({ descent, reducedMotion }: Props) {
   const cometSpin = useRef(0);
 
   const { geometry, uniforms } = useMemo(() => {
-    const positions = new Float32Array(COUNT * 3);
-    const seeds = new Float32Array(COUNT);
-    const scales = new Float32Array(COUNT);
-    const types = new Float32Array(COUNT);
-    const orders = new Float32Array(COUNT);
+    // The core scales gently (sqrt) so a sparse disc keeps its bright center
+    // while the arms, dust, and rim thin out.
+    const countCore = Math.round(COUNT_CORE * Math.sqrt(density));
+    const countArm = Math.round(COUNT_ARM * density);
+    const countDust = Math.round(COUNT_DUST * density);
+    const countFar = Math.round(COUNT_FAR * density);
+    const count = countCore + countArm + countDust + countFar;
+    // Higher exponents concentrate the radial distribution toward the core,
+    // which reads as the rim fading out rather than stopping.
+    const armExp = 0.65 + edgeFade * 0.5;
+    const dustExp = 0.5 + edgeFade * 0.4;
+
+    const positions = new Float32Array(count * 3);
+    const seeds = new Float32Array(count);
+    const scales = new Float32Array(count);
+    const types = new Float32Array(count);
+    const orders = new Float32Array(count);
 
     let i = 0;
     const push = (
@@ -103,7 +121,7 @@ export function Galaxy({ descent, reducedMotion }: Props) {
     };
 
     // Core bulge: dense center, ignites first.
-    for (let n = 0; n < COUNT_CORE; n++) {
+    for (let n = 0; n < countCore; n++) {
       const seed = n * 23 + 100;
       const r = Math.abs(normal(seed)) * 3.6;
       const theta = hash01(seed + 4) * Math.PI * 2;
@@ -117,9 +135,9 @@ export function Galaxy({ descent, reducedMotion }: Props) {
     }
 
     // Spiral arms: the "machines".
-    for (let n = 0; n < COUNT_ARM; n++) {
+    for (let n = 0; n < countArm; n++) {
       const seed = n * 29 + 80_000;
-      const r = Math.pow(hash01(seed), 0.65) * RADIUS;
+      const r = Math.pow(hash01(seed), armExp) * RADIUS;
       const p = armPoint(r, n % ARMS, seed + 4);
       const hero = hash01(seed + 20) < 0.02;
       push(
@@ -134,9 +152,9 @@ export function Galaxy({ descent, reducedMotion }: Props) {
     }
 
     // Dust halo for body.
-    for (let n = 0; n < COUNT_DUST; n++) {
+    for (let n = 0; n < countDust; n++) {
       const seed = n * 19 + 600_000;
-      const r = Math.sqrt(hash01(seed)) * RADIUS * 1.3;
+      const r = Math.pow(hash01(seed), dustExp) * RADIUS * (1.3 - 0.2 * edgeFade);
       const theta = hash01(seed + 4) * Math.PI * 2;
       push(
         Math.cos(theta) * r,
@@ -148,7 +166,7 @@ export function Galaxy({ descent, reducedMotion }: Props) {
     }
 
     // Far starfield: faint specks way beyond the disc, for scale.
-    for (let n = 0; n < COUNT_FAR; n++) {
+    for (let n = 0; n < countFar; n++) {
       const seed = n * 31 + 800_000;
       const r = RADIUS * (1.1 + hash01(seed) * 3.0);
       const theta = hash01(seed + 4) * Math.PI * 2;
@@ -185,7 +203,7 @@ export function Galaxy({ descent, reducedMotion }: Props) {
     };
 
     return { geometry, uniforms };
-  }, []);
+  }, [density, edgeFade]);
 
   const texture = blobTexture();
 
