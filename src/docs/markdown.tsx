@@ -8,7 +8,7 @@ import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import { common } from "lowlight";
 import dockerfile from "highlight.js/lib/languages/dockerfile";
-import { copyText } from "./loader";
+import { copyText } from "../lib/copyText";
 
 function textOf(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);

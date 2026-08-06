@@ -63,13 +63,6 @@ const FEATURED_PAGES: DocPage[] = [
   },
 ];
 
-const BLOG_PAGES: DocPage[] = [
-  {
-    route: "/docs/blog/dynamic-hardware",
-    nav: "You should never have to guess how much CPU or RAM you need",
-  },
-];
-
 const toItems = (examples: ExampleCard[]): DocItem[] =>
   examples.map((example) => ({ label: example.title, to: example.route }));
 
@@ -154,12 +147,6 @@ export const DOCS_TABS: DocTab[] = [
       items: toItems(category.examples),
     })),
   },
-  {
-    label: "Blog",
-    to: "/docs/blog/dynamic-hardware",
-    match: ["/docs/blog"],
-    groups: [{ label: "Blog", items: BLOG_PAGES.map((page) => ({ label: page.nav, to: page.route })) }],
-  },
 ];
 
 /** Every routable docs page, including the two generated cover pages. */
@@ -167,7 +154,6 @@ export const DOCS_PAGES: DocPage[] = [
   ...CORE_PAGES,
   ...FEATURED_PAGES,
   ...ALL_EXAMPLE_CATEGORIES.flatMap((category) => toDocPages(category.examples)),
-  ...BLOG_PAGES,
 ];
 
 const byRoute = new Map(DOCS_PAGES.map((page) => [page.route, page]));

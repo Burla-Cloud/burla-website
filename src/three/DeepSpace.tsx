@@ -85,12 +85,13 @@ const fragment = /* glsl */ `
 
 type Props = {
   reducedMotion: boolean;
+  showNebulae?: boolean;
 };
 
 // Everything below the galaxy: a deep field of stars and a few faint ambient
 // nebula washes near the hero handoff. The content sections sit on the bare
 // starfield; their surfaces carry the contrast, not scene lighting.
-export function DeepSpace({ reducedMotion }: Props) {
+export function DeepSpace({ reducedMotion, showNebulae = true }: Props) {
   const nebulaRefs = useRef<(THREE.Sprite | null)[]>([]);
   const texture = blobTexture();
 
@@ -195,33 +196,34 @@ export function DeepSpace({ reducedMotion }: Props) {
         />
       </points>
 
-      {nebulae.map((n, idx) => (
-        <sprite
-          key={`nebula-${idx}`}
-          position={n.position}
-          scale={[n.scale, n.scale * 0.62, 1]}
-          renderOrder={-50}
-          ref={(el) => {
-            nebulaRefs.current[idx] = el;
-          }}
-        >
-          <spriteMaterial
-            map={texture}
-            color={n.color}
-            transparent
-            opacity={n.opacity}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            stencilWrite
-            stencilWriteMask={0}
-            stencilRef={1}
-            stencilFunc={THREE.NotEqualStencilFunc}
-            stencilFail={THREE.KeepStencilOp}
-            stencilZFail={THREE.KeepStencilOp}
-            stencilZPass={THREE.KeepStencilOp}
-          />
-        </sprite>
-      ))}
+      {showNebulae &&
+        nebulae.map((n, idx) => (
+          <sprite
+            key={`nebula-${idx}`}
+            position={n.position}
+            scale={[n.scale, n.scale * 0.62, 1]}
+            renderOrder={-50}
+            ref={(el) => {
+              nebulaRefs.current[idx] = el;
+            }}
+          >
+            <spriteMaterial
+              map={texture}
+              color={n.color}
+              transparent
+              opacity={n.opacity}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              stencilWrite
+              stencilWriteMask={0}
+              stencilRef={1}
+              stencilFunc={THREE.NotEqualStencilFunc}
+              stencilFail={THREE.KeepStencilOp}
+              stencilZFail={THREE.KeepStencilOp}
+              stencilZPass={THREE.KeepStencilOp}
+            />
+          </sprite>
+        ))}
     </group>
   );
 }

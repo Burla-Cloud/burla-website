@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 // the markdown pipeline, and the docs don't pay for the three.js scene.
 const App = lazy(() => import("./App.tsx"));
 const DocsApp = lazy(() => import("./docs/DocsApp.tsx"));
+const BlogApp = lazy(() => import("./blog/BlogApp.tsx"));
 
 // Docs routes manage their own scrolling (anchors, page changes).
 function ScrollReset() {
@@ -25,6 +26,8 @@ export function Router() {
       <Suspense fallback={<div className="min-h-screen bg-void" />}>
         <Routes>
           <Route path="/" element={<App />} />
+          <Route path="/blog" element={<BlogApp />} />
+          <Route path="/docs/blog/*" element={<Navigate to="/blog" replace />} />
           <Route path="/docs/*" element={<DocsApp />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

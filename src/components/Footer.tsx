@@ -43,9 +43,9 @@ export function Footer() {
               <ul className="mt-5 space-y-3">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    {/* Docs links are SPA routes; /privacy/ and /terms/ are
+                    {/* Main app links are SPA routes; /privacy/ and /terms/ are
                         static HTML in public/ and need a real navigation. */}
-                    {l.href.startsWith("/docs") ? (
+                    {l.href.startsWith("/docs") || l.href === "/blog" ? (
                       <Link
                         to={l.href}
                         className="inline-flex min-h-11 items-center text-[13px] text-inkDim transition-colors hover:text-ink"

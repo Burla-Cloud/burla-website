@@ -6,6 +6,7 @@ type Props = {
   /** Page scroll in viewport heights; slides the view downward. */
   descent: { current: number };
   reducedMotion: boolean;
+  baseY?: number;
 };
 
 // World units the camera drops per viewport of scroll.
@@ -15,10 +16,10 @@ export const DROP_PER_VIEWPORT = 16;
 // slow drift. Scrolling translates camera and look target straight down
 // together (while the galaxy itself lifts away), so the page descends through
 // open space.
-export function ZoomRig({ descent, reducedMotion }: Props) {
+export function ZoomRig({ descent, reducedMotion, baseY = 30 }: Props) {
   const { camera, pointer } = useThree();
 
-  const basePos = useMemo(() => new THREE.Vector3(0, 30, 66), []);
+  const basePos = useMemo(() => new THREE.Vector3(0, baseY, 66), [baseY]);
   const desiredRef = useRef(new THREE.Vector3());
   const lookRef = useRef(new THREE.Vector3());
 

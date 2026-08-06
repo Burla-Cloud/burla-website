@@ -4,6 +4,7 @@
 
 export const LINKS = {
   docs: "/docs",
+  blog: "/blog",
   github: "https://github.com/Burla-Cloud/burla",
   email: "mailto:jake@burla.dev",
 };
@@ -14,9 +15,10 @@ export const NAV = {
   wordmark: "Burla",
   links: [
     { label: "Docs", href: LINKS.docs },
+    { label: "Blog", href: LINKS.blog },
     { label: "GitHub", href: LINKS.github },
   ],
-  login: { label: "Log in", href: "https://login.burla.dev/" },
+  login: { label: "Login", href: "https://login.burla.dev/" },
 };
 
 // ---------------------------------------------------------------------------
@@ -233,7 +235,7 @@ export const FEATURES = {
   lede: "Adaptive concurrency keeps VM utilization close to 90%, so the same workload needs 20-50% less compute than Ray, Dask, Airflow, or AWS Batch. Burla runs on raw VMs in your cloud, without managed-platform markup.",
   blog: {
     label: "How adaptive concurrency works",
-    href: "/docs/blog/dynamic-hardware",
+    href: LINKS.blog,
   },
   compare: {
     title: "Relative workload cost",
@@ -309,7 +311,7 @@ export const FOOTER = {
       title: "Resources",
       links: [
         { label: "GitHub", href: LINKS.github },
-        { label: "Blog", href: "/docs/blog/dynamic-hardware" },
+        { label: "Blog", href: LINKS.blog },
         { label: "Book a call", href: "https://cal.com/jakez/burla?user=jakez" },
       ],
     },
