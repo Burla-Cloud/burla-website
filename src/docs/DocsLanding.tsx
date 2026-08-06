@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer } from "../components/Footer";
-import { FeaturedExamplesRail } from "../components/FeaturedExamplesRail";
+import { Reveal } from "../components/Reveal";
+import { ExamplesBento } from "../components/ExamplesBento";
 import { loadedDocsHero, prefetchDocsHero } from "../lib/prefetchDocs";
 
 const RESOURCES = [
@@ -155,35 +156,21 @@ export function DocsLanding() {
           ))}
         </section>
 
-        <section className="pt-16 lg:pt-20">
-          <FeaturedExamplesRail
-            align="docs"
+        <section className="relative py-20 sm:py-28" aria-labelledby="docs-examples-title">
+          <ExamplesBento
             replaceLinks
-            headerLeft={
-              <h2 className="font-display text-[clamp(30px,3vw,40px)] font-medium tracking-[-0.035em] text-ink">
-                Featured Examples
-              </h2>
-            }
-            headerRight={
-              <Link
-                to="/docs/examples"
-                replace
-                className="mr-1 hidden min-h-11 items-center gap-1.5 font-mono text-[13.5px] font-medium text-ink underline decoration-accent/50 underline-offset-4 transition-colors hover:text-accent sm:inline-flex"
-              >
-                All examples&nbsp;→
-              </Link>
+            maxWidth="1380px"
+            header={
+              <Reveal>
+                <h2
+                  id="docs-examples-title"
+                  className="font-display text-[clamp(30px,3vw,40px)] font-medium tracking-[-0.035em] text-ink"
+                >
+                  Featured Examples
+                </h2>
+              </Reveal>
             }
           />
-
-          <div className="mx-auto w-full max-w-[1380px] px-6 sm:hidden">
-            <Link
-              to="/docs/examples"
-              replace
-              className="mt-4 inline-flex min-h-11 items-center font-mono text-[12px] text-inkDim underline decoration-white/25 underline-offset-4"
-            >
-              All examples&nbsp; →
-            </Link>
-          </div>
         </section>
       </main>
 

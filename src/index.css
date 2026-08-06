@@ -111,11 +111,11 @@
      the same beveled read as the gradient-filled marks beside it. */
   .text-shadow-logo {
     text-shadow:
-      0 -1px 0 rgba(226, 250, 255, 0.5),
-      0 1px 0 rgba(6, 26, 34, 0.9),
-      0 2px 1px rgba(2, 12, 18, 0.75),
-      0 3px 6px rgba(0, 0, 0, 0.65),
-      0 0 22px rgba(150, 221, 240, 0.3);
+      0 -1px 0 rgba(226, 250, 255, 0.26),
+      0 1px 0 rgba(6, 26, 34, 0.48),
+      0 2px 1px rgba(2, 12, 18, 0.38),
+      0 3px 6px rgba(0, 0, 0, 0.34),
+      0 0 22px rgba(150, 221, 240, 0.16);
   }
 
   .tnum {
@@ -238,58 +238,6 @@
   .cursor-block {
     opacity: 1;
     animation: none;
-  }
-}
-
-/* ---- featured example rail --------------------------------------------- */
-
-/* The rail owns the full viewport width, while its first card stays aligned
-   with the centered page content (--rail-max matches the page container).
-   Cards never hit a hard viewport edge: they dissolve out at the left edge of
-   the page and ghost in through a roughly card-wide region on the right, so
-   the next example is visible in the margin without ever being clipped. */
-.docs-featured-rail {
-  --rail-fade-right: min(320px, 45vw);
-  --rail-max: 1380px;
-  width: 100vw;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 2.5rem,
-    #000 calc(100% - var(--rail-fade-right)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 2.5rem,
-    #000 calc(100% - var(--rail-fade-right)),
-    transparent 100%
-  );
-}
-
-.docs-featured-rail--site {
-  --rail-max: 1200px;
-}
-
-.docs-featured-rail::-webkit-scrollbar {
-  display: none;
-}
-
-/* Extra end padding lets the last card scroll clear of the right fade zone. */
-.docs-featured-row {
-  padding-left: 1.5rem;
-  padding-right: calc(var(--rail-fade-right) + 1.5rem);
-}
-
-@media (min-width: 640px) {
-  .docs-featured-row {
-    padding-left: max(2.5rem, calc((100vw - var(--rail-max)) / 2 + 2.5rem));
-    padding-right: calc(var(--rail-fade-right) + 2.5rem);
   }
 }
 

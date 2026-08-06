@@ -1,4 +1,4 @@
-import { PipInstall } from "../components/PipInstall";
+import { TryCommands } from "../components/TryCommands";
 import { HERO } from "../content";
 
 // Act I. One screen: the brand statement in front of the fully-lit galaxy.
@@ -34,7 +34,7 @@ export function HeroAct() {
             {HERO.sub}
           </p>
           <div className="mt-9 flex justify-center">
-            <PipInstall size="big" />
+            <TryCommands />
           </div>
         </div>
       </div>

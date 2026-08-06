@@ -32,7 +32,7 @@ export function BrandLockup() {
       onFocus={blink}
       className="group inline-flex min-h-11 items-center text-accent text-shadow-logo"
     >
-      <span className="flex origin-left items-baseline gap-[6px] font-logo text-[23px] font-bold tracking-tight transition-transform duration-200 ease-out motion-safe:group-hover:scale-[1.06]">
+      <span className="flex origin-left items-baseline gap-[6px] font-logo text-[23px] font-bold tracking-tight transition-transform duration-200 ease-out motion-safe:group-hover:scale-[1.03]">
         <svg
           viewBox="0 0 12 18"
           className="h-[18px] w-auto"
@@ -40,9 +40,9 @@ export function BrandLockup() {
         >
           <defs>
             <linearGradient id="burla-face" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#DFF6FD" />
+              <stop offset="0" stopColor="#AEE1ED" />
               <stop offset="0.45" stopColor="currentColor" />
-              <stop offset="1" stopColor="#2E7C90" />
+              <stop offset="1" stopColor="#56A4B7" />
             </linearGradient>
           </defs>
           {[
@@ -57,7 +57,7 @@ export function BrandLockup() {
                 width="6"
                 height="6"
                 fill="#04141B"
-                opacity="0.7"
+                opacity="0.36"
               />
               <rect x={x} y={y} width="6" height="6" fill="url(#burla-face)" />
               <rect
@@ -66,7 +66,7 @@ export function BrandLockup() {
                 width="6"
                 height="0.9"
                 fill="#EFFBFF"
-                opacity="0.55"
+                opacity="0.28"
               />
             </g>
           ))}
@@ -83,12 +83,12 @@ export function BrandLockup() {
         >
           <defs>
             <linearGradient id="burla-bar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#DFF6FD" />
+              <stop offset="0" stopColor="#AEE1ED" />
               <stop offset="0.5" stopColor="currentColor" />
-              <stop offset="1" stopColor="#2E7C90" />
+              <stop offset="1" stopColor="#56A4B7" />
             </linearGradient>
           </defs>
-          <rect y="0.6" width="12" height="6" fill="#04141B" opacity="0.7" />
+          <rect y="0.6" width="12" height="6" fill="#04141B" opacity="0.36" />
           <rect width="12" height="6" fill="url(#burla-bar)" />
         </svg>
       </span>

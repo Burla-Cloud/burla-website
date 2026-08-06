@@ -129,21 +129,25 @@ function GridTile({
 export function ExamplesBento({
   replaceLinks = false,
   header,
+  /** Container width, so the grid can line up with whichever page hosts it. */
+  maxWidth = "1200px",
 }: {
   replaceLinks?: boolean;
   header: ReactNode;
+  maxWidth?: string;
 }) {
   const reducedMotion = useReducedMotion() ?? false;
 
   return (
     <>
-      <div className="mx-auto mb-12 w-full max-w-[1200px] px-6 sm:px-10">
+      <div className="mx-auto mb-12 w-full px-6 sm:px-10" style={{ maxWidth }}>
         {header}
       </div>
 
       <div
         data-featured-grid
-        className="mx-auto mb-4 grid w-full max-w-[1200px] gap-4 px-6 sm:px-10 md:grid-cols-3"
+        className="mx-auto mb-4 grid w-full gap-4 px-6 sm:px-10 md:grid-cols-3"
+        style={{ maxWidth }}
       >
         {FEATURED.map((example) => (
           <FeaturedTile
@@ -157,7 +161,8 @@ export function ExamplesBento({
 
       <div
         data-examples-grid
-        className="mx-auto grid w-full max-w-[1200px] grid-cols-2 gap-4 px-6 sm:px-10 lg:grid-cols-4"
+        className="mx-auto grid w-full grid-cols-2 gap-4 px-6 sm:px-10 lg:grid-cols-4"
+        style={{ maxWidth }}
       >
         {REST.map((example) => (
           <GridTile
