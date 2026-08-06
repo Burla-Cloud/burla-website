@@ -3,31 +3,14 @@ import type { ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ExampleIcon3D } from "./ExampleIcon3D";
-import type { Mark3DKind } from "./ExampleIcon3D";
+import { markFor } from "./exampleMarks";
 import { WORKLOADS } from "../content";
-
-// Wireframe mark for each featured example. Examples that also live on the
-// examples page use the same mark there, so every surface stays consistent.
-const FEATURED_MARKS: Record<string, Mark3DKind> = {
-  "/docs/featured-examples/process-2.4tb-of-parquet-files-in-76s": "parquet",
-  "/docs/featured-examples/airbnb-burla": "star",
-  "/docs/featured-examples/multi-stage-genomic-pipeline": "helix",
-  "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods": "city",
-  "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo": "embed",
-  "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day": "raindrop",
-  "/docs/all-examples/data-processing-examples/world-photo-index": "pin",
-  "/docs/featured-examples/arxiv-fossils": "spiral",
-  "/docs/all-examples/ml-embeddings-and-search/parallel-hyperparameter-tuning": "peak",
-  "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing": "raster",
-  "/docs/all-examples/production-data-jobs/monte-carlo-simulation": "dice",
-  "/docs/featured-examples/amazon-review-distiller": "merge",
-};
 
 const FEATURED_EXAMPLES = WORKLOADS.examples.map((example) => ({
   title: example.title,
   description: example.desc,
   to: example.href,
-  icon: FEATURED_MARKS[example.href] ?? ("cloud" as Mark3DKind),
+  icon: markFor(example.href),
 }));
 
 function ArrowButton({

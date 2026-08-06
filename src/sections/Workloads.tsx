@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 import { Reveal } from "../components/Reveal";
-import { FeaturedExamplesRail } from "../components/FeaturedExamplesRail";
+import { ExamplesBento } from "../components/ExamplesBento";
 import { DOMAIN_COLORS, WORKLOADS } from "../content";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -68,12 +67,11 @@ export function Workloads() {
   return (
     <section
       id="workloads"
-      className="relative py-24 sm:py-32"
+      className="relative py-20 sm:py-28"
       aria-labelledby="workloads-title"
     >
-      <FeaturedExamplesRail
-        align="site"
-        headerLeft={
+      <ExamplesBento
+        header={
           <Reveal>
             <h2
               id="workloads-title"
@@ -85,22 +83,6 @@ export function Workloads() {
               <span className="sr-only">{WORKLOADS.heading[1]}</span>
               <CyclingHeadingLine />
             </h2>
-          </Reveal>
-        }
-        headerRight={
-          <Reveal delay={80} y={12}>
-            <Link
-              to={WORKLOADS.moreHref}
-              className="group inline-flex items-center gap-5 border border-accent/45 bg-card/60 px-5 py-4 font-mono text-[12px] font-medium text-ink transition-[border-color,background-color,color] duration-200 hover:border-accent hover:bg-accent hover:text-void"
-            >
-              {WORKLOADS.moreLabel}
-              <span
-                aria-hidden="true"
-                className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-              >
-                →
-              </span>
-            </Link>
           </Reveal>
         }
       />

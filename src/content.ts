@@ -74,6 +74,24 @@ export const DOMAIN_COLORS: Record<string, string> = {
   Biotech: "143 211 166", // soft green
   Geospatial: "217 182 120", // amber
   Finance: "172 152 218", // violet
+  Data: "142 168 196", // steel, the catch-all for plain data work
+};
+
+export type ExampleEntry = {
+  icon: string;
+  /** The headline figure, set large. Not always a number. */
+  metric: string;
+  /** What the figure counts, set as the line beneath it. */
+  metricLabel: string;
+  /** Key into DOMAIN_COLORS, drives the tag tint. */
+  domain: string;
+  /** The three that get a large tile at the top of the home page. */
+  featured?: boolean;
+  /** Kept out of the home grid so it fills whole rows. Still in the docs. */
+  hideOnHome?: boolean;
+  title: string;
+  desc: string;
+  href: string;
 };
 
 export const WORKLOADS = {
@@ -88,82 +106,136 @@ export const WORKLOADS = {
   ],
   moreLabel: "Browse all examples",
   moreHref: EXAMPLES.allExamples,
-  // Twelve real examples in one flat grid. Every card links to a page in the
-  // on-site docs (/docs); `icon` picks the inline mark drawn in Workloads.tsx.
+  // Twelve real examples. Every card links to a page in the on-site docs
+  // (/docs); `icon` picks the inline mark drawn by ExampleIcon3D.
+  //
+  // `metric` and `metricLabel` are the same claim as `title`, split so the
+  // number can be set as the headline and the subject as the line under it.
+  // Nothing here is estimated: every figure already appears in the title or
+  // desc of its own example. Two workloads have no countable headline figure,
+  // so their metric slot carries the strongest technical token instead.
+  //
+  // `featured` marks the three that earn a large tile at the top of the home
+  // page, in this array's order. Their metric carries its own unit, since a
+  // bare number at that size reads as a score rather than a quantity.
+  //
+  // `hideOnHome` trims the home grid to a whole number of rows. Hidden examples
+  // still appear in the docs rail and on the examples page.
   examples: [
     {
       icon: "parquet",
+      metric: "2.4TB",
+      metricLabel: "of Parquet, queried in 76s",
+      domain: "Data",
+      featured: true,
       title: "Query 2.4TB of Parquet in 76s",
       desc: "One DuckDB query over 1,000 files on a 10,000-CPU cluster.",
       href: "/docs/featured-examples/process-2.4tb-of-parquet-files-in-76s",
     },
     {
-      icon: "house",
-      title: "Rank 1.7M Airbnbs by TV location",
-      desc: "CLIP-score every listing photo across 119 cities, then validate.",
-      href: "/docs/featured-examples/airbnb-burla",
+      icon: "sliders",
+      metric: "1,000 CPUs",
+      metricLabel: "tuning XGBoost in parallel",
+      domain: "ML",
+      featured: true,
+      title: "Tune XGBoost on 1,000 CPUs",
+      desc: "Train dozens of models at once and keep the best AUC.",
+      href: "/docs/all-examples/ml-embeddings-and-search/parallel-hyperparameter-tuning",
     },
     {
       icon: "helix",
+      metric: "360 genomes",
+      metricLabel: "aligned in parallel",
+      domain: "Biotech",
+      featured: true,
       title: "Multi-stage genomic pipeline",
       desc: "Align 360 raw Illumina samples and convert them to PGEN in one run.",
       href: "/docs/featured-examples/multi-stage-genomic-pipeline",
     },
     {
+      icon: "house",
+      metric: "1.7M",
+      metricLabel: "Airbnbs ranked by TV location",
+      domain: "ML",
+      title: "Rank 1.7M Airbnbs by TV location",
+      desc: "CLIP-score every listing photo across 119 cities, then validate.",
+      href: "/docs/featured-examples/airbnb-burla",
+    },
+    {
       icon: "route",
+      metric: "2.76B",
+      metricLabel: "NYC taxi trips scanned",
+      domain: "Data",
       title: "Scan 2.76B NYC taxi trips",
       desc: "Two decades of cab data reduced to a zone-by-month matrix.",
       href: "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods",
     },
     {
       icon: "gpu",
+      metric: "A100s",
+      metricLabel: "embedding Wikipedia with bge-large",
+      domain: "ML",
+      hideOnHome: true,
       title: "Embed Wikipedia articles on GPUs",
       desc: "CPU workers stream text while A100 workers embed with bge-large.",
       href: "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo",
     },
     {
       icon: "raindrop",
+      metric: "3.18B",
+      metricLabel: "rain records reduced to one answer",
+      domain: "Geospatial",
       title: "Find NOAA's rainiest day",
       desc: "Reduce 3.18B daily rain records down to a single global answer.",
       href: "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",
     },
     {
       icon: "pin",
+      metric: "9.5M",
+      metricLabel: "geotagged photos reverse-geocoded",
+      domain: "Geospatial",
       title: "Map 9.5M geotagged photos",
       desc: "Reverse-geocode the Flickr YFCC100M archive into a world index.",
       href: "/docs/all-examples/data-processing-examples/world-photo-index",
     },
     {
       icon: "spiral",
+      metric: "2.7M",
+      metricLabel: "arXiv abstracts clustered by topic",
+      domain: "ML",
       title: "Cluster 2.7M arXiv abstracts",
       desc: "Embed the full corpus and trace research topics through time.",
       href: "/docs/featured-examples/arxiv-fossils",
     },
     {
-      icon: "sliders",
-      title: "Tune XGBoost on 1,000 CPUs",
-      desc: "Train dozens of models at once and keep the best AUC.",
-      href: "/docs/all-examples/ml-embeddings-and-search/parallel-hyperparameter-tuning",
-    },
-    {
       icon: "raster",
+      metric: "2,000",
+      metricLabel: "Sentinel-2 tiles turned into NDVI",
+      domain: "Geospatial",
+      hideOnHome: true,
       title: "NDVI over 2,000 Sentinel-2 tiles",
       desc: "Compute vegetation indexes with GDAL, one GeoTIFF per tile.",
       href: "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing",
     },
     {
       icon: "dice",
+      metric: "1B",
+      metricLabel: "option paths simulated",
+      domain: "Finance",
       title: "Run 1B option simulations",
       desc: "Monte Carlo paths split across workers for one tight error bar.",
       href: "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
     },
     {
       icon: "star",
+      metric: "572M",
+      metricLabel: "Amazon reviews ranked from 275GB",
+      domain: "Data",
       title: "Rank 572M Amazon reviews",
       desc: "Stream 275GB of JSONL and keep the top K, deterministically.",
       href: "/docs/featured-examples/amazon-review-distiller",
     },
-  ],
+  ] as ExampleEntry[],
 };
 
 // ---------------------------------------------------------------------------
