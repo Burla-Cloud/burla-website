@@ -2,7 +2,9 @@
 description: In fact, it's much better if you don't!
 ---
 
-# You should not need to estimate how much CPU or RAM you need.
+# You should <span class="blog-title-accent">not</span> need to estimate how much CPU or RAM you need.
+
+<p class="blog-byline"><span>Jake Zuliani</span><span class="blog-byline-divider" aria-hidden="true">·</span><span>April 22, 2026</span></p>
 
 This might sound crazy but it's true. The reason why has nothing to do with our ability to guess.
 

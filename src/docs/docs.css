@@ -139,6 +139,51 @@
   color: rgba(234, 246, 250, 0.68);
 }
 
+.doc-prose .blog-byline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 0 0 14px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(234, 246, 250, 0.55);
+}
+
+.doc-prose .blog-byline-divider {
+  color: #7ecbdd;
+  font-size: 0.6em;
+}
+
+.blog-post > * {
+  width: min(100%, 760px);
+  margin-inline: auto;
+}
+
+.blog-post > h1,
+.blog-post > .doc-desc,
+.blog-post > .blog-byline {
+  width: 100%;
+}
+
+.blog-post > h1 {
+  max-width: 860px;
+  text-wrap: wrap;
+}
+
+.blog-post .blog-title-accent {
+  color: #7ecbdd;
+}
+
+.blog-post > .doc-desc {
+  margin-bottom: 12px;
+}
+
+.blog-post > .blog-byline {
+  margin-bottom: 52px;
+}
+
 /* ---- body ----------------------------------------------------------- */
 
 .doc-prose p {
