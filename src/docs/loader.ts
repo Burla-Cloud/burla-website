@@ -130,6 +130,18 @@ export function getDocContent(route: string): DocContent | undefined {
   return content;
 }
 
+/**
+ * Keeps only the `{% cloud aws gcp %} ... {% endcloud %}` blocks that name the
+ * given cloud. Getting Started is one page whose commands differ per provider.
+ */
+export function selectCloud(md: string, cloud: string): string {
+  return md.replace(
+    /\{%\s*cloud\s+([a-z\s]+?)\s*%\}\n?([\s\S]*?)\{%\s*endcloud\s*%\}\n?/g,
+    (_m, ids: string, body: string) =>
+      ids.trim().split(/\s+/).includes(cloud) ? body : "",
+  );
+}
+
 export type DocHeading = { id: string; text: string; level: number };
 
 /** GitHub-slugger equivalent for the ids rehype-slug generates. */

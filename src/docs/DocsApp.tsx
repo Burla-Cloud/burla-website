@@ -3,11 +3,18 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import { Nav } from "../components/Nav";
 import { Footer } from "../components/Footer";
 import { StarfieldBackground } from "../components/StarfieldBackground";
-import { DOCS_TABS, findDocPage, findDocRedirect, findDocTab } from "./registry";
+import {
+  DOCS_TABS,
+  forCloud,
+  findDocPage,
+  findDocRedirect,
+  findDocTab,
+} from "./registry";
 import type { DocGroup, DocTab } from "./registry";
 import { DocPage } from "./DocPage";
 import { DocsLanding } from "./DocsLanding";
 import { Toc } from "./Toc";
+import { useCloudChoice } from "./cloudChoice";
 import "./docs.css";
 
 // Height of the site navbar. The sidebar and toc rails stick just below it.
@@ -179,6 +186,10 @@ export default function DocsApp() {
   const isLandingPage = route === "/docs";
   const isCoverPage = route === "/docs/examples";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cloud] = useCloudChoice();
+  // Getting Started shows nothing but the cloud picker until a cloud is
+  // chosen, so the rails have no sections to point at yet.
+  const hideToc = isCoverPage || (route === "/docs/get-started" && !cloud);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -319,7 +330,12 @@ export default function DocsApp() {
                 </Link>
               ))}
             </div>
-            <Sidebar tab={tab} route={route} hash={hash} onNavigate={closeMenu} />
+            <Sidebar
+              tab={forCloud(tab, cloud)}
+              route={route}
+              hash={hash}
+              onNavigate={closeMenu}
+            />
           </div>
         </div>
       )}
@@ -336,7 +352,12 @@ export default function DocsApp() {
               className="docs-scroller sticky overflow-y-auto pb-12 pr-2"
               style={{ top: NAV_H, maxHeight: `calc(100vh - ${NAV_H}px)`, paddingTop: 20 }}
             >
-              <Sidebar tab={tab} route={route} hash={hash} onNavigate={closeMenu} />
+              <Sidebar
+                tab={forCloud(tab, cloud)}
+                route={route}
+                hash={hash}
+                onNavigate={closeMenu}
+              />
             </div>
           </aside>
 
@@ -355,7 +376,7 @@ export default function DocsApp() {
                 <DocPage route={route} />
               </main>
 
-              {!isCoverPage && (
+              {!hideToc && (
                 <aside className="hidden pl-6 min-[1152px]:block">
                   <div
                     className="sticky overflow-y-auto pb-12 [scrollbar-width:thin]"

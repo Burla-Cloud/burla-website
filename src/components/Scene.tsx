@@ -11,6 +11,11 @@ type Props = {
   galaxy?: boolean;
 };
 
+// Half-height of the frustum at the corridor's far plane, plus room for the
+// camera's cursor parallax and drift. Without the galaxy overhead, the star
+// field has to reach at least this high or the top of the first screen is bare.
+const STARS_ABOVE_CAMERA = 84;
+
 export function Scene({ descent, reducedMotion, galaxy = true }: Props) {
   const cameraY = galaxy ? 30 : 0;
 
@@ -27,7 +32,11 @@ export function Scene({ descent, reducedMotion, galaxy = true }: Props) {
     >
       <color attach="background" args={[BACKGROUND]} />
       {galaxy && <Galaxy descent={descent} reducedMotion={reducedMotion} />}
-      <DeepSpace reducedMotion={reducedMotion} showNebulae={galaxy} />
+      <DeepSpace
+        reducedMotion={reducedMotion}
+        showNebulae={galaxy}
+        topY={galaxy ? undefined : STARS_ABOVE_CAMERA}
+      />
       <ZoomRig
         descent={descent}
         reducedMotion={reducedMotion}

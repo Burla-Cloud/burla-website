@@ -63,13 +63,11 @@ function Anchor({ href = "", children, ...rest }: ComponentProps<"a">) {
   );
 }
 
+// The whole block is the copy target, with a button in the corner as the
+// affordance. Dragging to select text still works: a click that ends on a
+// selection is a selection, not a copy.
 function Pre({ children, ...rest }: ComponentProps<"pre">) {
   const [copied, setCopied] = useState(false);
-  const code = Array.isArray(children) ? children[0] : children;
-  let language = "";
-  if (isValidElement<{ className?: string }>(code)) {
-    language = code.props.className?.match(/language-(\w+)/)?.[1] ?? "";
-  }
 
   const copy = async () => {
     await copyText(textOf(children).replace(/\n$/, ""));
@@ -78,14 +76,42 @@ function Pre({ children, ...rest }: ComponentProps<"pre">) {
   };
 
   return (
-    <div className="doc-codeblock">
-      <div className="doc-codeblock-bar">
-        <span>{language || "code"}</span>
-        <button type="button" onClick={copy} aria-label="Copy code">
-          {copied ? "copied" : "copy"}
-        </button>
-      </div>
+    <div
+      className="doc-codeblock"
+      data-copied={copied ? "true" : undefined}
+      onClick={() => {
+        if (!window.getSelection()?.toString()) void copy();
+      }}
+    >
       <pre {...rest}>{children}</pre>
+      <button
+        type="button"
+        className="doc-codeblock-copy"
+        aria-label={copied ? "Copied" : "Copy code"}
+        onClick={(event) => {
+          event.stopPropagation();
+          void copy();
+        }}
+      >
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          {copied ? (
+            <path d="M4.75 10.5 8.25 14l7-8" />
+          ) : (
+            <>
+              <rect x={7} y={7} width={9.5} height={9.5} rx={2} />
+              <path d="M13 4.5H5.5A1.5 1.5 0 0 0 4 6v7.5" />
+            </>
+          )}
+        </svg>
+      </button>
     </div>
   );
 }

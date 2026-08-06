@@ -69,6 +69,23 @@ const toItems = (examples: ExampleCard[]): DocItem[] =>
 const toDocPages = (examples: ExampleCard[]): DocPage[] =>
   examples.map((example) => ({ route: example.route, nav: example.title }));
 
+// Getting Started's step 2 is titled after the cloud the reader picked, so its
+// sidebar row (and anchor) changes with that choice.
+const CLOUD_CLI_ITEMS: Record<string, DocItem> = {
+  aws: {
+    label: "Log in to the AWS CLI",
+    to: "/docs/get-started#2-log-in-to-the-aws-cli",
+  },
+  gcp: {
+    label: "Log in to the Google Cloud CLI",
+    to: "/docs/get-started#2-log-in-to-the-google-cloud-cli",
+  },
+  azure: {
+    label: "Log in to the Azure CLI",
+    to: "/docs/get-started#2-log-in-to-the-azure-cli",
+  },
+};
+
 export const DOCS_TABS: DocTab[] = [
   {
     label: "Getting Started",
@@ -80,20 +97,25 @@ export const DOCS_TABS: DocTab[] = [
         route: "/docs/get-started",
         items: [
           {
-            label: "Pick your cloud",
-            to: "/docs/get-started#1-pick-your-cloud",
+            label: "Select your cloud provider",
+            to: "/docs/get-started#1-select-your-cloud-provider",
+          },
+          CLOUD_CLI_ITEMS.aws,
+          {
+            label: "Install Burla",
+            to: "/docs/get-started#3-install-burla",
           },
           {
             label: "Boot some machines",
-            to: "/docs/get-started#2-open-the-dashboard-and-boot-some-machines",
+            to: "/docs/get-started#4-boot-some-machines",
           },
           {
             label: "Run some code",
-            to: "/docs/get-started#3-run-some-code",
+            to: "/docs/get-started#5-run-some-code",
           },
           {
             label: "Deploy for your team",
-            to: "/docs/get-started#4-deploy-it-for-your-team-optional",
+            to: "/docs/get-started#6-deploy-it-for-your-team-optional",
           },
         ],
       },
@@ -165,6 +187,25 @@ const redirects = new Map(
     ["/docs/basics", "/docs/examples"] as const,
   ],
 );
+
+/**
+ * Getting Started's sidebar tree depends on the chosen cloud: before a choice
+ * only step 1 is on the page, and after one step 2 is named for that cloud.
+ */
+export function forCloud(tab: DocTab, cloud: string | null): DocTab {
+  if (tab.to !== "/docs/get-started") return tab;
+  return {
+    ...tab,
+    groups: tab.groups.map((group) => ({
+      ...group,
+      items: cloud
+        ? group.items.map((item, index) =>
+            index === 1 ? (CLOUD_CLI_ITEMS[cloud] ?? item) : item,
+          )
+        : group.items.slice(0, 1),
+    })),
+  };
+}
 
 export function findDocPage(route: string): DocPage | undefined {
   return byRoute.get(route);

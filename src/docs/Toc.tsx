@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { docHeadings, getDocContent } from "./loader";
+import { docHeadings, getDocContent, selectCloud } from "./loader";
+import { useCloudChoice } from "./cloudChoice";
 
 // The right-hand rail, built like Modal's: the page title on top, then its
 // headings, all sharing one continuous hairline down the left edge. The
 // heading in view gets an accent bar and a chip background.
 export function Toc({ route, title }: { route: string; title: string }) {
+  // Getting Started renders only the chosen cloud's sections, and its step 2
+  // is named after that cloud, so the rail has to read the same filtered copy.
+  const [cloud] = useCloudChoice();
   const headings = useMemo(() => {
-    const md = getDocContent(route)?.markdown ?? "";
+    let md = getDocContent(route)?.markdown ?? "";
+    if (cloud) md = selectCloud(md, cloud);
     const found = docHeadings(md);
     const minLevel = found.length ? Math.min(...found.map((h) => h.level)) : 2;
     return found.map((h) => ({ ...h, nested: h.level > minLevel }));
-  }, [route]);
+  }, [route, cloud]);
 
   // "" means the page title (top of the document) is active.
   const [active, setActive] = useState("");

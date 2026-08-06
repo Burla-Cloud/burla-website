@@ -3,7 +3,9 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { blobTexture } from "./textures";
 
-const FIELD_COUNT = 18000;
+// Stars per world unit of corridor height, so extending the corridor upward
+// (see topY) adds stars instead of thinning the ones already there.
+const FIELD_DENSITY = 18000 / 438;
 
 // The corridor the camera descends through after the hero. It starts just above
 // the galaxy plane so there is no empty gap on the way out, and runs deep enough
@@ -86,12 +88,24 @@ const fragment = /* glsl */ `
 type Props = {
   reducedMotion: boolean;
   showNebulae?: boolean;
+  /**
+   * Top of the star corridor, in world units. The default sits just above the
+   * galaxy plane, which is all the hero needs: its camera starts high and looks
+   * down. Pages without the galaxy point a camera at y=0 straight ahead, so
+   * they have to raise this above the top of the frustum or the upper half of
+   * the first screen renders starless.
+   */
+  topY?: number;
 };
 
 // Everything below the galaxy: a deep field of stars and a few faint ambient
 // nebula washes near the hero handoff. The content sections sit on the bare
 // starfield; their surfaces carry the contrast, not scene lighting.
-export function DeepSpace({ reducedMotion, showNebulae = true }: Props) {
+export function DeepSpace({
+  reducedMotion,
+  showNebulae = true,
+  topY = Y_TOP,
+}: Props) {
   const nebulaRefs = useRef<(THREE.Sprite | null)[]>([]);
   const texture = blobTexture();
 
@@ -106,18 +120,19 @@ export function DeepSpace({ reducedMotion, showNebulae = true }: Props) {
   );
 
   const fieldGeometry = useMemo(() => {
-    const positions = new Float32Array(FIELD_COUNT * 3);
-    const sizes = new Float32Array(FIELD_COUNT);
-    const seeds = new Float32Array(FIELD_COUNT);
-    const depths = new Float32Array(FIELD_COUNT);
+    const count = Math.round(FIELD_DENSITY * (topY - Y_BOTTOM));
+    const positions = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const seeds = new Float32Array(count);
+    const depths = new Float32Array(count);
 
-    for (let n = 0; n < FIELD_COUNT; n++) {
+    for (let n = 0; n < count; n++) {
       // Keep the content corridor slightly quieter by distributing more stars
       // toward the margins instead of concentrating them on the centre line.
       const lateral = (hash(n * 29 + 7) - 0.5) * 2;
       positions[n * 3] =
         Math.sign(lateral) * Math.pow(Math.abs(lateral), 0.9) * X_SPREAD;
-      positions[n * 3 + 1] = Y_TOP + hash(n * 31 + 11) * (Y_BOTTOM - Y_TOP);
+      positions[n * 3 + 1] = topY + hash(n * 31 + 11) * (Y_BOTTOM - topY);
       positions[n * 3 + 2] = Z_FAR + hash(n * 41 + 3) * (Z_NEAR - Z_FAR);
       sizes[n] = 0.85 + Math.pow(hash(n * 37 + 13), 2.4) * 3.0;
       seeds[n] = hash(n * 17 + 5);
@@ -130,7 +145,7 @@ export function DeepSpace({ reducedMotion, showNebulae = true }: Props) {
     geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
     geometry.setAttribute("aDepth", new THREE.BufferAttribute(depths, 1));
     return geometry;
-  }, []);
+  }, [topY]);
   useEffect(() => () => fieldGeometry.dispose(), [fieldGeometry]);
 
   // Ambient ink washes, weighted to the top of the corridor so the galaxy's
