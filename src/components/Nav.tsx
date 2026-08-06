@@ -38,9 +38,11 @@ export function Nav({ sections }: { sections?: ReactNode }) {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-500 ease-out ${
-        scrolled || menuOpen
+        menuOpen
           ? "border-white/[0.09] bg-[#03080d] shadow-[0_12px_32px_rgba(0,0,0,0.28)]"
-          : "border-transparent bg-[#03080d]/0"
+          : scrolled
+            ? "border-white/[0.09] bg-[#03080d]/55 shadow-[0_12px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+            : "border-transparent bg-[#03080d]/0"
       }`}
     >
       <div className="relative flex min-h-16 items-center justify-between gap-8 px-6 sm:px-10">
