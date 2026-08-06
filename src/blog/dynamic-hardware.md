@@ -37,7 +37,7 @@ When you choose fixed resources upfront, there are only three possible outcomes:
 3. You set CPU and RAM perfectly.\
    This still loses, because different tasks require different resources. In the PDF example, a fixed worker size has to serve tiny PDFs and giant PDFs. If you size every worker for the giant PDFs, the tiny PDFs waste memory. If you size every worker for the tiny PDFs, the giant PDFs fail or crawl. Not to mention, within some single task resource use can vary drastically, and that extra space could be put to use.
 
-<figure><img src="/docs-assets/dynamic-hardware-task-distribution.png" alt="A long-tail distribution where most PDFs need little CPU or RAM and a few need much more."><figcaption><p>Most parallel jobs are not made of identical work items. A fixed resource request has to pretend they are.</p></figcaption></figure>
+<div data-diagram="task-distribution"></div>
 
 The system is asking the user to predict something that will only become visible during execution.\
 This is hard to guess correctly, even if you do you're still leaving capacity on the table.
@@ -53,7 +53,7 @@ Burla workers (docker containers) do not have fixed CPU and RAM limits inside a 
 
 Burla can control the hardware available to each task by controlling concurrency.
 
-<figure><img src="/docs-assets/dynamic-hardware-worker-adjustment.webp" alt="A server tray with worker blocks inside it, where smaller workers leave and a larger worker keeps running with more space."><figcaption><p>Burla does not resize a running computer. It resizes the amount of work competing for that computer.</p></figcaption></figure>
+<div data-diagram="worker-adjustment"></div>
 
 Burla starts aggressively, with one worker per available CPU. If CPU and RAM utilization is low, Burla adds workers. Those workers pull more inputs from the queue and start doing useful work.
 
@@ -88,7 +88,7 @@ When Burla removes workers on a machine to free up resources, the total number o
 
 Conversely, when Burla adds workers to a machine to increase utilization, it must remove workers elsewhere to stay below the job's maximum allowed parallelism. This is how Burla directly saves you money, by packing more workers into less machines where possible, and removing any machines that become empty.
 
-<figure><img src="/docs-assets/dynamic-hardware-grow-cluster.webp" alt="A cluster grows by adding a new node that begins pulling document work from a queue."><figcaption><p>"Dynamic Hardware" is not just adaptive realtime concurrency control. It's adaptive infrastructure for the whole job.</p></figcaption></figure>
+<div data-diagram="grow-cluster"></div>
 
 This is why "Dynamic Hardware" is a useful name even though the mechanism is really concurrency control + horizontal autoscaling.
 

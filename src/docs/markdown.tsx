@@ -116,12 +116,18 @@ const COMPONENTS = {
   img: Img,
 };
 
-export function DocMarkdown({ markdown }: { markdown: string }) {
+export function DocMarkdown({
+  markdown,
+  components,
+}: {
+  markdown: string;
+  components?: ComponentProps<typeof ReactMarkdown>["components"];
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={REMARK_PLUGINS}
       rehypePlugins={REHYPE_PLUGINS}
-      components={COMPONENTS}
+      components={components ? { ...COMPONENTS, ...components } : COMPONENTS}
     >
       {markdown}
     </ReactMarkdown>
