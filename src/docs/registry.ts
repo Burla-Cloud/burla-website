@@ -106,12 +106,12 @@ export const DOCS_TABS: DocTab[] = [
             to: "/docs/get-started#3-install-burla",
           },
           {
-            label: "Boot some machines",
-            to: "/docs/get-started#4-boot-some-machines",
+            label: "Open the dashboard",
+            to: "/docs/get-started#4-open-the-dashboard-and-boot-some-machines",
           },
           {
             label: "Run some code",
-            to: "/docs/get-started#5-run-some-code",
+            to: "/docs/get-started#5-run-some-code-in-the-cloud",
           },
           {
             label: "Deploy for your team",

@@ -1,5 +1,5 @@
 ---
-description: Run your first job in 60 seconds.
+description: Run your first job in minutes.
 ---
 
 # Getting Started
@@ -48,29 +48,19 @@ burla config set cloud azure
 pip install burla
 ```
 
-#### 4. Boot some machines
+#### 4. Open the dashboard, and boot some machines
 
 ```bash
 burla dashboard
 ```
 
-{% cloud aws %}
-This opens the dashboard. Hit **⏻ Start** to boot an EC2 instance. Instance type, node count, and Docker image are editable in settings.
-{% endcloud %}
-
-{% cloud gcp %}
-This opens the dashboard. Hit **⏻ Start** to boot a Compute Engine VM. Machine type, node count, and Docker image are editable in settings.
-{% endcloud %}
-
-{% cloud azure %}
-This opens the dashboard. Hit **⏻ Start** to boot an Azure VM. VM size, node count, and Docker image are editable in settings.
-{% endcloud %}
+This will run the dashboard locally, hit **⏻ Start** to boot some machines in your cloud. Instance type, node count, and Docker image are editable in the settings.
 
 {% hint style="info" %}
 Nodes shut themselves down after 10 idle minutes, so nothing keeps billing you after you walk away.
 {% endhint %}
 
-#### 5. Run some code
+#### 5. Run some code in the cloud
 
 ```python
 from burla import remote_parallel_map
@@ -82,9 +72,15 @@ def my_function(x):
 results = remote_parallel_map(my_function, list(range(100)))
 ```
 
-Prints stream back to your terminal, and exceptions are re-raised locally with full tracebacks.
+This will call `my_function` on every item in `list(range(100))`, each inside a separate Docker container inside your cloud.
 
-Hardware is an argument, not configuration:
+Burla makes coding in the cloud feel the same as coding on your laptop:
+
+- Remote exceptions appear locally.
+- Your local Python environment is quickly copied on all remote machines.
+- Responses are fast, even with thousands of CPUs or millions of inputs.
+
+Give each function in your script different hardware, or a different Docker image:
 
 ```python
 results = remote_parallel_map(
@@ -97,11 +93,11 @@ results = remote_parallel_map(
 )
 ```
 
-See the [API reference](/docs/api-reference) for every argument.
+See the [API reference](/docs/api-reference) to see every argument.
 
 #### 6. Deploy it for your team (optional)
 
-To share one cluster, dashboard, and job history with teammates, move the coordinator off your laptop onto a small always-on VM in your account:
+Right now, the dashboard is running locally, and the compute is running in your cloud. To share Burla with your team, run `burla deploy`:
 
 ```bash
 burla deploy
