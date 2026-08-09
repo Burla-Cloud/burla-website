@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { setCanonical } from "./lib/canonical.ts";
 
 // Each route lives in its own lazy chunk so the landing page doesn't pay for
 // the markdown pipeline, and the docs don't pay for the three.js scene.
@@ -16,6 +17,12 @@ function ScrollReset() {
   return null;
 }
 
+function CanonicalLink() {
+  const { pathname } = useLocation();
+  useEffect(() => setCanonical(pathname), [pathname]);
+  return null;
+}
+
 // "/" in dev, "/burla-website" on GitHub project Pages.
 const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 
@@ -23,6 +30,7 @@ export function Router() {
   return (
     <BrowserRouter basename={basename}>
       <ScrollReset />
+      <CanonicalLink />
       <Suspense fallback={<div className="min-h-screen bg-void" />}>
         <Routes>
           <Route path="/" element={<App />} />

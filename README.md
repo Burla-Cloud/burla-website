@@ -27,6 +27,19 @@ npm run dev
 Production is `https://burla.dev`, served by nginx from `/var/www/burla` on the
 `burla-website` EC2 instance in the `burla-prod` AWS account (`us-east-1`).
 
+`npm run build` prerenders one HTML file per route (`scripts/prerender.mjs`),
+each with its own title, description, and canonical, plus `robots.txt`,
+`sitemap.xml`, and a `noindex` `404.html`. Without this every URL served the
+same shell and Google dropped the site as duplicate content. nginx must serve
+those files rather than falling back to `index.html`:
+
+```nginx
+location / {
+    try_files $uri $uri.html $uri/index.html =404;
+}
+error_page 404 /404.html;
+```
+
 Build with `npm ci && npm run build`, upload the `dist/` artifact to
 `s3://burla-website-deploy-018789813546-us-east-1/releases/`, then deploy it to
 the instance through SSM. GitHub Pages must remain disabled for this repository.

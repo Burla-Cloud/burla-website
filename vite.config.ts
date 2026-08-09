@@ -25,16 +25,17 @@ const staticPageRewrite = (): Plugin => {
   }
 }
 
-// GitHub Pages has no SPA rewrite rule, so deep links like /docs/get-started
-// 404 on the server. Serving a copy of index.html as 404.html lets the
-// client-side router take over on those URLs.
-const spaFallback404 = (): Plugin => ({
-  name: 'spa-fallback-404',
+// Emits a real HTML file per route (own title, description, canonical), plus
+// robots.txt, sitemap.xml, and a noindex 404.html. Without it every URL serves
+// the same shell and Google treats the whole site as duplicates of "/".
+const prerenderRoutes = (): Plugin => ({
+  name: 'prerender-routes',
   apply: 'build',
-  closeBundle() {
+  async closeBundle() {
     const dist = path.resolve(import.meta.dirname, 'dist')
-    const index = path.join(dist, 'index.html')
-    if (fs.existsSync(index)) fs.copyFileSync(index, path.join(dist, '404.html'))
+    if (!fs.existsSync(path.join(dist, 'index.html'))) return
+    const { prerender } = await import('./scripts/prerender.mjs')
+    await prerender()
   },
 })
 
@@ -42,5 +43,5 @@ const spaFallback404 = (): Plugin => ({
 // https://vite.dev/config/
 export default defineConfig({
   base: process.env.VITE_BASE ?? "/",
-  plugins: [react(), staticPageRewrite(), spaFallback404()],
+  plugins: [react(), staticPageRewrite(), prerenderRoutes()],
 })
