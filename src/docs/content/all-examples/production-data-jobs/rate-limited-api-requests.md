@@ -34,6 +34,8 @@ MAX_PARALLELISM = 1_000
 SECONDS_BETWEEN_CALLS_PER_WORKER = 1.0
 ```
 
+`API_KEY` is read on your machine, and the value is captured into the pickled function when the job starts (see [Pass API keys & secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers)).
+
 ### Step 1: Chunk the ids
 
 Each chunk is large enough to amortize startup and small enough to stream results as it finishes.

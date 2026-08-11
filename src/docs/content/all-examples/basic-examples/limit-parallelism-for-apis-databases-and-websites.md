@@ -57,10 +57,13 @@ Put pacing and provider behavior next to the HTTP call.
 import os
 import time
 import httpx
+
+API_TOKEN = os.environ["API_TOKEN"]
+
 def enrich_users(user_ids):
 
     rows = []
-    headers = {"Authorization": f"Bearer {os.environ['API_TOKEN']}"}
+    headers = {"Authorization": f"Bearer {API_TOKEN}"}
     with httpx.Client(timeout=30.0, headers=headers) as client:
         for user_id in user_ids:
             response = client.get(f"https://api.example.com/v1/users/{user_id}")
@@ -72,6 +75,8 @@ def enrich_users(user_ids):
             time.sleep(1.0)
     return rows
 ```
+
+`API_TOKEN` is read at module level on your machine and captured into the pickled function; an `os.environ` read inside the function would run on a worker, where the variable does not exist (see [Pass API keys & secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers)).
 
 Cap live workers with `max_parallelism`.
 
@@ -108,13 +113,16 @@ import os
 import boto3
 import psycopg2
 from psycopg2.extras import execute_values
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+
 def load_file_to_postgres(key):
 
     body = boto3.client("s3").get_object(Bucket="my-events", Key=key)["Body"].read()
     rows = [json.loads(line) for line in gzip.decompress(body).splitlines()]
     values = [(row["event_id"], row["user_id"], row["ts"]) for row in rows]
 
-    connection = psycopg2.connect(os.environ["DATABASE_URL"])
+    connection = psycopg2.connect(DATABASE_URL)
     with connection, connection.cursor() as cursor:
         execute_values(
             cursor,

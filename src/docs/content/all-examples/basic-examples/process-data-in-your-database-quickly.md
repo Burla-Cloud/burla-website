@@ -32,6 +32,8 @@ ROWS_PER_RANGE = 25_000
 MAX_DB_CONNECTIONS = 20
 ```
 
+`DATABASE_URL` is read on your machine, and the value is captured into the pickled function when the job starts (see [Pass API keys & secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers)).
+
 ### Step 1: Build ID ranges
 
 First ask the database for the range you intend to scan. Then split that range into jobs.

@@ -36,6 +36,8 @@ MAX_DB_LOADERS = 25
 REPORT_PATH = Path("/workspace/shared/file-drop-etl/load-report.jsonl")
 ```
 
+`DATABASE_URL` is read on your machine, and the value is captured into the pickled function when the job starts (see [Pass API keys & secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers)).
+
 ### Step 1: List the files
 
 The client lists the daily prefix and builds one input per file.

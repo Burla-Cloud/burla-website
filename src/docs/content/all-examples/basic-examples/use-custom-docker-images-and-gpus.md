@@ -186,9 +186,11 @@ If your image runs Python 3.12, run your local script with Python 3.12. Version 
 
 Do not bake API keys, database passwords, or cloud credentials into an image.
 
-Use runtime environment variables, workload identity, service accounts, or the cloud permissions already attached to the worker.
+Read secrets at module level on your machine instead. The value is captured into the pickled function and travels to workers with your code. Pass it explicitly to library constructors, for example `OpenAI(api_key=OPENAI_API_KEY)` or `boto3.client("s3", aws_access_key_id=..., aws_secret_access_key=...)`.
 
-The image should contain code dependencies. Runtime credentials should stay runtime credentials.
+Burla does not forward your client environment variables to workers, and workers have no cloud identity by default. See [Pass API keys & secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers).
+
+The image should contain code dependencies, not secrets.
 
 ## Choose resources from the worker
 

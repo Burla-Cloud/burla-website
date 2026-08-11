@@ -47,6 +47,13 @@ export const BASICS_CATEGORY: ExampleCategory = {
       icon: "sliders",
     },
     {
+      route: "/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers",
+      title: "Pass API keys & secrets to workers",
+      description:
+        "Read env vars on your machine, not on workers. Secrets travel inside the pickled function.",
+      icon: "gate",
+    },
+    {
       route: "/docs/all-examples/basic-examples/combine-many-results-files-into-one-map-reduce",
       title: "Combine many results/files into one",
       description:
