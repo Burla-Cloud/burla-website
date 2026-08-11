@@ -38,31 +38,6 @@ const CORE_PAGES: DocPage[] = [
   { route: "/docs/examples", nav: "Examples" },
 ];
 
-// Featured examples stay routable (the landing page links to them) but are
-// not listed in the sidebar.
-const FEATURED_PAGES: DocPage[] = [
-  {
-    route: "/docs/featured-examples/process-2.4tb-of-parquet-files-in-76s",
-    nav: "Query 2.4TBs of Parquet files in 76s",
-  },
-  {
-    route: "/docs/featured-examples/airbnb-burla",
-    nav: "Ranking 1.7M Airbnbs by TV location",
-  },
-  {
-    route: "/docs/featured-examples/amazon-review-distiller",
-    nav: "Ranking 572M Amazon reviews",
-  },
-  {
-    route: "/docs/featured-examples/arxiv-fossils",
-    nav: "Clustering 2.7M arXiv abstracts",
-  },
-  {
-    route: "/docs/featured-examples/multi-stage-genomic-pipeline",
-    nav: "Genomic alignment pipeline (Illumina)",
-  },
-];
-
 const toItems = (examples: ExampleCard[]): DocItem[] =>
   examples.map((example) => ({ label: example.title, to: example.route }));
 
@@ -174,7 +149,6 @@ export const DOCS_TABS: DocTab[] = [
 /** Every routable docs page, including the two generated cover pages. */
 export const DOCS_PAGES: DocPage[] = [
   ...CORE_PAGES,
-  ...FEATURED_PAGES,
   ...ALL_EXAMPLE_CATEGORIES.flatMap((category) => toDocPages(category.examples)),
 ];
 

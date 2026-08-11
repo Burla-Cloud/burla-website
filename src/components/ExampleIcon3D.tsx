@@ -36,7 +36,8 @@ export type Mark3DKind =
   | "dice"
   | "helix"
   | "raindrop"
-  | "raster";
+  | "raster"
+  | "reads";
 
 const TAU = Math.PI * 2;
 
@@ -715,6 +716,47 @@ function rasterCellCenter(index: number): [number, number] {
 // Visit order hops around the grid so the "processing" tile does not scan
 // boringly left to right.
 const RASTER_ORDER = [0, 6, 11, 3, 13, 5, 10, 1, 15, 8, 2, 12, 7, 14, 4, 9];
+
+const READ_DEPTH = 0.13;
+const READ_HEIGHT = 0.07;
+const READ_REFERENCE_Y = -0.72;
+const READ_LANDING_Y = 0.92;
+
+/** One sequencing read: a short slab sitting at x on row y, at depth z. */
+function readSlab(x: number, y: number, width: number, z = 0): Segment[] {
+  return translate(box(width, READ_HEIGHT, READ_DEPTH), x, y, z);
+}
+
+// A pileup: reads scattered over the reference in both x and depth, so the
+// stack reads as staggered coverage rather than a set of full-width planks.
+const READ_PILEUP: [number, number, number, number][] = [
+  [-0.46, -0.42, 0.46, 0.18],
+  [0.34, -0.42, 0.54, -0.16],
+  [-0.54, -0.16, 0.3, -0.2],
+  [0.14, -0.16, 0.58, 0.14],
+  [-0.3, 0.1, 0.62, -0.1],
+  [0.52, 0.1, 0.28, 0.2],
+  [-0.02, 0.36, 0.44, -0.18],
+];
+
+// Each landing read drops into the gap its row leaves open.
+const READ_LANDINGS: [number, number, number, number][] = [
+  [0.5, 0.36, 0.36, 0.16],
+  [-0.52, 0.36, 0.4, 0.02],
+  [0.16, 0.62, 0.46, -0.14],
+];
+
+// Reference strand: a long spine with base ticks along it.
+const READ_REFERENCE: Segment[] = [
+  ...box(1.76, 0.05, READ_DEPTH, 0, READ_REFERENCE_Y),
+  ...Array.from({ length: 7 }, (_, index) => {
+    const x = -0.72 + index * 0.24;
+    return [
+      [x, READ_REFERENCE_Y + 0.025, -READ_DEPTH / 2],
+      [x, READ_REFERENCE_Y + 0.025, READ_DEPTH / 2],
+    ] as Segment;
+  }),
+];
 
 const ICONS: Record<Mark3DKind, IconSpec> = {
   // Cloud storage: a bucket with files leaving and arriving.
@@ -1396,6 +1438,44 @@ const ICONS: Record<Mark3DKind, IconSpec> = {
             helixPoint(HELIX.radius, HELIX.y0, HELIX.y1, HELIX.turns, 0, p),
           ),
           radius: 2.5,
+          live: true,
+        },
+      ];
+    },
+  },
+
+  // Sequence alignment: short reads stacking up over a reference strand.
+  reads: {
+    base: [
+      ...READ_REFERENCE,
+      ...READ_PILEUP.flatMap(([x, y, width, z]) => readSlab(x, y, width, z)),
+    ],
+    accents: (time) => {
+      const beat = time * 0.4;
+      const drop = beat % 1;
+      const [x, y, width, z] = READ_LANDINGS[Math.floor(beat) % READ_LANDINGS.length];
+      const fall = READ_LANDING_Y - (READ_LANDING_Y - y) * drop;
+      return [
+        { segments: readSlab(x, fall, width, z), opacity: travelFade(drop) },
+        {
+          segments: [
+            [
+              [x, READ_REFERENCE_Y + 0.05, z],
+              [x, fall - READ_HEIGHT / 2, z],
+            ],
+          ],
+          opacity: 0.3 * travelFade(drop),
+        },
+      ];
+    },
+    dots: (time) => {
+      const beat = time * 0.4;
+      const drop = beat % 1;
+      const [x, y, , z] = READ_LANDINGS[Math.floor(beat) % READ_LANDINGS.length];
+      return [
+        {
+          position: [x, READ_LANDING_Y - (READ_LANDING_Y - y) * drop, z],
+          radius: 2.4 * travelFade(drop),
           live: true,
         },
       ];

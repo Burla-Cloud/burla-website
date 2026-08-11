@@ -98,6 +98,20 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
     legacyRoute: "/docs/all-examples/ml-embeddings-and-search",
     examples: [
       {
+        route: "/docs/featured-examples/arxiv-fossils",
+        title: "Cluster 2.7M arXiv abstracts",
+        description:
+          "Embed every arXiv abstract and cluster the whole corpus. Use FAISS to find topics that went extinct.",
+        icon: "spiral",
+      },
+      {
+        route: "/docs/featured-examples/airbnb-burla",
+        title: "CLIP-score 1.7M Airbnb photos",
+        description:
+          "Rank listings across 119 cities by where the TV is. Validate each shortlist with a vision model.",
+        icon: "image",
+      },
+      {
         route: "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo",
         title: "Embed 50K Wikipedia articles",
         description:
@@ -132,6 +146,20 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
     description: "High-throughput scans, indexing, summarization, and dataframe work.",
     legacyRoute: "/docs/all-examples/data-processing-examples",
     examples: [
+      {
+        route: "/docs/featured-examples/process-2.4tb-of-parquet-files-in-76s",
+        title: "Query 2.4TB of Parquet in 76s",
+        description:
+          "Run one DuckDB query across 1,000 files on a 10,000-CPU cluster. Reduce every partial result into one table.",
+        icon: "parquet",
+      },
+      {
+        route: "/docs/featured-examples/amazon-review-distiller",
+        title: "Rank 572M Amazon reviews",
+        description:
+          "Stream 275GB of review JSONL as byte-range chunks. Score every review to surface the strangest ones.",
+        icon: "star",
+      },
       {
         route: "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods",
         title: "Scan 2.76B NYC taxi trips",
@@ -217,11 +245,18 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
     legacyRoute: "/docs/all-examples/scientific-and-geospatial-work",
     examples: [
       {
+        route: "/docs/featured-examples/multi-stage-genomic-pipeline",
+        title: "Convert 360 IDAT samples to PGEN",
+        description:
+          "Chain bcftools and plink across a whole cohort in parallel. Merge every sample into one PGEN dataset.",
+        icon: "helix",
+      },
+      {
         route: "/docs/all-examples/scientific-and-geospatial-work/bioinformatics-alignment",
         title: "Align every FASTQ sample",
         description:
           "Align sequencing samples in parallel with native tools. Keep each sample isolated and reproducible.",
-        icon: "helix",
+        icon: "reads",
       },
       {
         route: "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",
