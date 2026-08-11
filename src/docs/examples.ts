@@ -246,17 +246,17 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
     examples: [
       {
         route: "/docs/featured-examples/multi-stage-genomic-pipeline",
-        title: "Align 360 Illumina genomes",
+        title: "Convert 360 IDAT samples to PGEN",
         description:
-          "Run a multi-stage genomic alignment pipeline in parallel. Merge every sample into one PGEN dataset.",
-        icon: "etl",
+          "Chain bcftools and plink across a whole cohort in parallel. Merge every sample into one PGEN dataset.",
+        icon: "helix",
       },
       {
         route: "/docs/all-examples/scientific-and-geospatial-work/bioinformatics-alignment",
         title: "Align every FASTQ sample",
         description:
           "Align sequencing samples in parallel with native tools. Keep each sample isolated and reproducible.",
-        icon: "helix",
+        icon: "reads",
       },
       {
         route: "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",
