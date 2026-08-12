@@ -49,7 +49,7 @@ export const BASICS_CATEGORY: ExampleCategory = {
         "/docs/all-examples/basic-examples/limit-parallelism-for-apis-databases-and-websites",
       title: "Limit parallelism for APIs or databases",
       description:
-        "Cap concurrency around external services. Protect APIs, databases, and websites from overload.",
+        "Cap concurrent function calls around an API or database.",
       icon: "sliders",
     },
     {
