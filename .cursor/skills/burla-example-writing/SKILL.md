@@ -24,6 +24,8 @@ When revising an existing page, preserve concise human-written structure and voi
 
 Before writing, state privately in one sentence what the example must prove.
 
+Phrase the proof as what the reader can do or observe, not how Burla implements it.
+
 Keep only what is necessary to prove that sentence. Do not add a second lesson because it is related or convenient.
 
 Each tutorial step demonstrates exactly one concept or feature. If a heading naturally contains “and,” split it unless both actions are inseparable from the proof.
@@ -59,7 +61,7 @@ Use the smallest subset of this structure that works:
 4. Numbered steps, one concept per step.
 5. Minimal runnable code.
 6. Exact expected output, if output helps.
-7. One screenshot, only when it confirms a UI-visible result.
+7. One screenshot when dashboard or other UI state is part of the proof.
 
 Do not add a recap, congratulations, sales pitch, generic conclusion, support invitation, or “why this matters” section unless it resolves a question the reader will actually have.
 
@@ -80,6 +82,8 @@ Featured and workload examples may be longer when the real workflow requires it:
 
 - Use plain, specific sentences.
 - Prefer concrete nouns and verbs.
+- Lead titles, descriptions, and openings with the reader's concrete outcome. Prefer familiar language such as “close your laptop” to system language such as “local process exits.”
+- State requirements directly. Explain implementation rationale only when it changes what the reader must do or prevents a likely mistake.
 - State concrete compatibility and requirements instead of using vague labels such as “ordinary.”
 - Tell readers what they need to do, not what they do not need to do.
 - Answer the reader’s likely question at the moment it arises.
@@ -129,15 +133,19 @@ Do not preserve incorrect behavior for consistency with an older example.
 
 ## Screenshots and example assets
 
+If the reader would use the dashboard to confirm the result or monitor the workflow, the screenshot is part of the proof. Include one current screenshot showing that exact state.
+
 When the dashboard appears in an example:
 
 1. Run the dashboard from the current Burla `dev` branch.
-2. Create only the data shown by the example.
-3. Remove license banners, unrelated rows, and test artifacts from the captured view.
-4. Capture every image the example uses from the same dashboard state, commonly the inline screenshot, cover, and card.
-5. Preserve the existing asset dimensions unless the layout requires a change.
-6. Add useful alt text.
-7. Delete temporary local and cloud files after capture.
+2. Run the exact code from the page end to end, including any cancellation or disconnection steps it teaches.
+3. Make the proof visible with the smallest useful signal, such as one `Started` log for a still-running job.
+4. Create only the data shown by the example.
+5. Remove license banners, unrelated rows, and test artifacts from the captured view.
+6. Capture every image the example uses from the same dashboard state, commonly the inline screenshot, cover, and card.
+7. Preserve the existing asset dimensions unless the layout requires a change.
+8. Add useful alt text.
+9. Delete temporary local and cloud files after capture.
 
 Never reuse a screenshot of an old dashboard theme.
 
@@ -148,6 +156,7 @@ Before finishing:
 - Read the page as a first-time Burla user.
 - Confirm every step teaches one thing.
 - Confirm every code line is required.
+- Confirm runtime behavior was exercised end to end when it is part of the proof.
 - Confirm the shown output can actually occur.
 - Confirm terminology is provider-neutral and precise.
 - Confirm screenshots match the current UI and code.
