@@ -80,6 +80,8 @@ Featured and workload examples may be longer when the real workflow requires it:
 
 - Use plain, specific sentences.
 - Prefer concrete nouns and verbs.
+- State concrete compatibility and requirements instead of using vague labels such as “ordinary.”
+- Tell readers what they need to do, not what they do not need to do.
 - Answer the reader’s likely question at the moment it arises.
 - Cut setup commentary, padded transitions, fake enthusiasm, and obvious summaries.
 - Avoid generic marketing language and claims such as “powerful,” “seamless,” “unlock,” or “transformative.”

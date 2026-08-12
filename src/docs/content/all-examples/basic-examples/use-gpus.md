@@ -11,17 +11,17 @@ Burla's GPU virtual machines provide the NVIDIA driver and expose one GPU to eac
 1. Complete [Getting Started](/docs/get-started) with AWS or Google Cloud. Burla does not yet support GPU workers on Azure.
 2. Make sure your cloud project or account has quota for the GPU you request.
 3. Use the same Python major and minor version locally as the PyTorch image.
+4. Install PyTorch locally with `pip install torch==2.5.1`.
 
 ## Run a PyTorch operation on a GPU
 
 ```python
+import torch
 from burla import remote_parallel_map
 
 PYTORCH_IMAGE = "pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime"
 
 def square_on_gpu(number):
-    import torch
-
     value = torch.tensor(number, device="cuda")
     return (value * value).item()
 
@@ -30,6 +30,7 @@ results = remote_parallel_map(
     [12],
     func_gpu="A100",
     image=PYTORCH_IMAGE,
+    grow=True,
 )
 print(results)
 ```

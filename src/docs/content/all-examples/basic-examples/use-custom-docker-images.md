@@ -1,19 +1,21 @@
----
-description: Choose a public or private container image from Settings or Python.
----
-
 # Use custom Docker images
 
-Burla runs ordinary Docker images. No Burla-specific build is required.
+Burla is compatible with almost any Linux-based Docker image.
 
-A compatible image needs a Linux amd64 variant, `sh`, and the same Python major and minor version as your local environment. This example uses the public `python:3.12-slim` image.
+Your image needs:
+
+* an amd64 variant
+* `sh`
+* Python with the same major and minor version as your local environment
+
+This example uses the public `python:3.12-slim` image.
 
 ## Before you run this
 
 1. Complete [Getting Started](/docs/get-started).
 2. Use Python 3.12 locally, or replace the image tag below with your Python version.
 
-## Option 1: Choose an image in Settings
+## Option 1: Define an image in the dashboard's cluster settings
 
 Run `burla dashboard`, open **Settings**, and set **Container Image → Image URI** to:
 
@@ -21,35 +23,35 @@ Run `burla dashboard`, open **Settings**, and set **Container Image → Image UR
 python:3.12-slim
 ```
 
-Start the virtual machines from the dashboard. Since those workers are already running, use `grow=False`:
+Start the virtual machines from the dashboard by clicking **Start**.
 
 ```python
-import platform
+import sys
 from burla import remote_parallel_map
 
-def python_version(_):
-    return ".".join(platform.python_version_tuple()[:2])
+def print_python_version(_):
+    print(f"{sys.version_info.major}.{sys.version_info.minor}")
 
-print(remote_parallel_map(python_version, [None], grow=False))
+remote_parallel_map(print_python_version, [None])
 ```
 
 ```bash
-['3.12']
+3.12
 ```
 
-## Option 2: Choose an image in Python
+## Option 2: Define an image in the Python API
 
 Pass the image URI directly to `remote_parallel_map`:
 
 ```python
-print(remote_parallel_map(
-    python_version,
+remote_parallel_map(
+    print_python_version,
     [None],
     image="python:3.12-slim",
-))
+)
 ```
 
-Burla uses a matching ready worker or boots one with that image.
+Burla uses a matching ready worker. If `grow=True` and no matching worker exists, Burla boots one with that image.
 
 ## Private images
 
