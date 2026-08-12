@@ -1,90 +1,42 @@
 ---
 cover: /docs-assets/how-to-guides/run-background-cover.webp
 coverY: 0
-description: Detached job example.
+description: Keep a Burla job running after your local process exits.
 ---
 
-# Run Python in the background.
+# Run Python in the background
 
-In this example we:
+Set `detach=True` to let a job continue after your script stops, once all inputs have uploaded. This requires a deployed Burla cluster because the cluster coordinator must remain online.
 
-* Run a simple Python function on remote machines with `remote_parallel_map`.
-* Set `detach=True` so the job keeps running if your laptop sleeps, loses internet, or you close your terminal.
-* Check progress in the Burla dashboard while the job runs in the background.
+## Before you run this
 
-## Before you start
+* To deploy your own cluster, complete [Getting Started](/docs/get-started), then run `burla deploy`.
+* To use a cluster your teammate deployed, install Burla and run `burla login`.
+* Run `burla dashboard` and start at least one virtual machine.
 
-Make sure you have already:
-
-1. installed Burla: `pip install burla`
-2. connected your machine: `burla login`
-3. started your cluster in the Burla dashboard
-
-## Step 1: Define a simple function
-
-This function pretends to do long work by sleeping for 2 minutes, then prints a message.
+## Start a background job
 
 ```python
 from time import sleep
+
 from burla import remote_parallel_map
 
-def process_number(number):
-    sleep(120)
-    print(f"Finished {number}")
+def slow_task(_):
+    sleep(300)
+    print("Finished")
+
+remote_parallel_map(slow_task, [None], detach=True)
 ```
 
-## Step 2: Start the job in detached mode
+The call stays attached while the job runs. Wait until Burla prints:
 
-Pass `detach=True` when you call `remote_parallel_map`:
-
-```python
-inputs = list(range(50))
-
-remote_parallel_map(process_number, inputs, detach=True)
+```text
+------------------------------
+Done uploading inputs!
+Job will now continue running if canceled locally.
+------------------------------
 ```
 
-`inputs = list(range(50))` means Burla will run `process_number` 50 times (once for each number from 0 to 49).
+You can now press Ctrl-C, close the terminal, or let your laptop go offline. The worker keeps running. If you press Ctrl-C, Burla prints a direct link to the job; you can also open **Jobs** in the dashboard to see its progress and logs.
 
-After inputs finish uploading, Burla prints:
-
-`Done uploading inputs! Job will now continue running if canceled locally.`
-
-At this point, the job can continue on the cluster even if you stop the local process.
-
-## Step 3: Let it run in the background
-
-Once you see the upload-complete message, you can close your terminal or stop the script.\
-Your functions keep running remotely.
-
-Open the Burla dashboard and go to the **Jobs** tab to watch logs and progress.
-
-## Step 4: Save results during a detached job
-
-Because you are stopping the local script, save each result to the cluster filesystem (`./shared`) from inside your function.
-
-```python
-from pathlib import Path
-from time import sleep
-from burla import remote_parallel_map
-
-def process_number(number):
-    sleep(120)
-    result_text = f"Finished {number}"
-    output_path = Path(f"./shared/detach-example-results/result-{number}.txt")
-    output_path.write_text(result_text)
-
-inputs = list(range(50))
-remote_parallel_map(process_number, inputs, detach=True)
-```
-
-After the job finishes, open the Burla dashboard and download files from `detach-example-results/` in the **Filesystem** tab.
-
-## Why this is useful
-
-Detached jobs are helpful when work may run for hours or days, such as:
-
-* processing many files
-* retraining many models
-* running long simulations
-
-You can submit the job once, let it run remotely, and check results later.
+Returned values are not delivered to your laptop after it disconnects. If you need durable results, write them to [cloud storage](/docs/all-examples/basic-examples/read-and-write-gcs-files) or another external store from inside the function.

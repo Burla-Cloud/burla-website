@@ -41,7 +41,7 @@ export const BASICS_CATEGORY: ExampleCategory = {
       route: "/docs/all-examples/basic-examples/run-python-in-the-background",
       title: "Run jobs in the background",
       description:
-        "Launch long jobs without holding a local process open. Reconnect later to inspect progress.",
+        "Keep a job running after your local process exits. Track progress from the dashboard.",
       icon: "clock",
     },
     {
