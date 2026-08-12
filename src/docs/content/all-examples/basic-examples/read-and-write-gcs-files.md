@@ -1,72 +1,52 @@
 ---
 cover: /docs-assets/how-to-guides/read-write-gcs-cover.webp
 coverY: 0
-description: Write and read files in GCS through /workspace/shared.
+description: Read and write shared files through /workspace/shared.
 ---
 
 # Read/Write Files to Cloud Storage
 
-In Burla, `/workspace/shared` is a shared folder connected to your Google Cloud Storage bucket:
+In a deployed Burla cluster:
 
-* Save a file to `/workspace/shared/...` and it shows up in your bucket.
-* Read a file from `/workspace/shared/...` and it is read from your bucket.
+* Every worker can read and write `/workspace/shared`.
+* Files there remain in your cloud storage after workers shut down.
+
+Burla backs the folder with Amazon S3, Google Cloud Storage, or Azure Blob Storage.
 
 ## Before you run this
 
 1. Install Burla: `pip install burla`
-2. Log in: `burla login`
-3. Start a machine in the Burla dashboard.
+2. Use a deployed cluster: run `burla deploy`, or `burla login` if a teammate already deployed one.
 
-## Step 1: Write files (saves to GCS)
-
-```python
-from pathlib import Path
-from burla import remote_parallel_map
-
-def write_text_file(file_path, text):
-    Path(file_path).write_text(text)
-    return file_path
-
-files_to_write = [
-    ("/workspace/shared/hello.txt", "hello\n"),
-    ("/workspace/shared/goodbye.txt", "goodbye\n"),
-]
-
-remote_parallel_map(write_text_file, files_to_write)
-```
-
-In the Burla dashboard → **Filesystem**, you should see:
-
-* `/workspace/shared/hello.txt`
-* `/workspace/shared/goodbye.txt`
-
-<figure><img src="/docs-assets/image-1-1-1.png" alt=""><figcaption></figcaption></figure>
-
-## Step 2: Read files back (comes from GCS)
+## Step 1: Write a file
 
 ```python
 from pathlib import Path
 from burla import remote_parallel_map
 
-def read_text_file(file_path):
-    return {"path": file_path, "text": Path(file_path).read_text()}
+file_path = "/workspace/shared/hello.txt"
 
-files_to_read = [
-    "/workspace/shared/hello.txt",
-    "/workspace/shared/goodbye.txt",
-]
+def write_file(path):
+    Path(path).write_text("hello")
 
-results = remote_parallel_map(read_text_file, files_to_read)
-print(results)
+remote_parallel_map(write_file, [file_path])
 ```
 
-You should see a list with the file paths and their text (the words `hello` and `goodbye`):
+Run `burla dashboard`, then open or refresh **Filesystem** to see the file:
+
+<figure><img src="/docs-assets/image-1-1-1.png" alt="Burla Filesystem showing hello.txt in /workspace/shared"><figcaption></figcaption></figure>
+
+## Step 2: Read the file
+
+```python
+def read_file(path):
+    return Path(path).read_text()
+
+print(remote_parallel_map(read_file, [file_path]))
+```
 
 ```bash
-[{'path': '/workspace/shared/hello.txt', 'text': 'hello'},
- {'path': '/workspace/shared/goodbye.txt', 'text': 'goodbye'}]
+['hello']
 ```
 
-Congrats! You just wrote to, and read from, a Google Cloud Storage bucket, in parallel, using Burla.
-
-Reach out to **jake@burla.dev** if you have any questions!
+The two calls may run on different machines; `/workspace/shared` lets the second call read what the first wrote.

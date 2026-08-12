@@ -20,8 +20,7 @@ export const BASICS_CATEGORY: ExampleCategory = {
     {
       route: "/docs/all-examples/basic-examples/read-and-write-gcs-files",
       title: "Read/Write Files to Cloud Storage",
-      description:
-        "Read and write shared files through Google Cloud Storage. Keep worker results available to every task.",
+      description: "Read and write shared files through /workspace/shared.",
       icon: "cloud",
     },
     {
