@@ -96,24 +96,7 @@ def summarize_order_range(id_range: IdRange) -> dict:
 
 If the worker needs to update rows, make the write idempotent. For read-only analytics, keep it read-only.
 
-### Step 3: Smoke test one range
-
-Test one small range before opening many database connections.
-
-```python
-test_result = remote_parallel_map(
-    summarize_order_range,
-    id_ranges[:1],
-    func_cpu=1,
-    func_ram=2,
-)[0]
-
-print(test_result)
-```
-
-This catches network access, credentials, package installs, and SQL mistakes before the full backfill starts.
-
-### Step 4: Run the full range list
+### Step 3: Run the full range list
 
 `max_parallelism` is the important line. It is the number of live workers allowed to hit the database at once.
 
@@ -128,7 +111,7 @@ range_results = remote_parallel_map(
 )
 ```
 
-### Step 5: Reduce the results
+### Step 4: Reduce the results
 
 The client combines the small per-range reports.
 

@@ -78,19 +78,6 @@ The worker writes only the fields needed for the later token counts. It does not
 ### Step 2: Run the shard workers
 
 ```python
-test_report = remote_parallel_map(
-    process_shard,
-    SHARD_IDS[:1],
-    func_cpu=1,
-    func_ram=4,
-)[0]
-
-print(test_report)
-```
-
-Then run the full metadata set.
-
-```python
 shard_reports = remote_parallel_map(
     process_shard,
     SHARD_IDS,

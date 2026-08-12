@@ -100,20 +100,7 @@ def prepare_text_shard(shard_idx: int) -> dict:
     return {"shard_idx": shard_idx, "rows": len(rows), "path": str(out_path)}
 ```
 
-Run one shard first. This is the same smoke-test habit as the XGBoost example: prove the dataset path, packages, and output shape before launching the full job.
-
-```python
-test_text_shard = remote_parallel_map(
-    prepare_text_shard,
-    [0],
-    func_cpu=2,
-    func_ram=8,
-)[0]
-
-print(test_text_shard)
-```
-
-Then prepare all 50 shards.
+Prepare all 50 shards.
 
 ```python
 text_reports = remote_parallel_map(
@@ -187,22 +174,7 @@ def embed_text_shard(report: dict) -> dict:
     }
 ```
 
-Run one GPU shard first.
-
-```python
-test_embedding = remote_parallel_map(
-    embed_text_shard,
-    [test_text_shard],
-    image=GPU_IMAGE,
-    func_gpu="A100",
-    func_cpu=4,
-    func_ram=32,
-)[0]
-
-print(test_embedding)
-```
-
-If that works, run the full embedding stage.
+Run the embedding stage.
 
 ```python
 embedding_reports = remote_parallel_map(

@@ -105,21 +105,6 @@ def fetch_and_embed(job: dict) -> dict:
 
 ### Step 3: Run the image batches
 
-Run one batch first. Broken image URLs and PIL mode surprises show up here.
-
-```python
-test_report = remote_parallel_map(
-    fetch_and_embed,
-    batches[:1],
-    func_cpu=4,
-    func_ram=16,
-)[0]
-
-print(test_report)
-```
-
-Then run the full museum.
-
 ```python
 vec_reports = remote_parallel_map(
     fetch_and_embed,

@@ -86,20 +86,7 @@ def process_year(year: int) -> str:
 
 The worker never holds a full year in memory. It holds a 100-record heap.
 
-### Step 3: Smoke test one year
-
-```python
-test_path = remote_parallel_map(
-    process_year,
-    [2024],
-    func_cpu=1,
-    func_ram=2,
-)[0]
-
-print(test_path)
-```
-
-### Step 4: Reduce the years
+### Step 3: Reduce the years
 
 The reducer merges yearly heaps, joins station metadata, computes country-decade stats, and renders the map.
 

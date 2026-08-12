@@ -67,22 +67,7 @@ def run_chunk(task: SimulationTask) -> dict:
 
 No simulated path comes back to the client. Only sufficient statistics do.
 
-### Step 3: Smoke test one chunk
-
-Run one chunk first to check memory, runtime, and output shape.
-
-```python
-test_result = remote_parallel_map(
-    run_chunk,
-    tasks[:1],
-    func_cpu=1,
-    func_ram=2,
-)[0]
-
-print(test_result)
-```
-
-### Step 4: Run and reduce locally
+### Step 3: Run and reduce locally
 
 The result list is tiny because the workers do not return raw paths.
 

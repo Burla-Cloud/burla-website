@@ -104,22 +104,7 @@ def summarize_event_chunk(chunk_path: str) -> dict:
     return report
 ```
 
-### Step 3: Test one chunk, then run all chunks
-
-Run the first chunk before launching the whole file.
-
-```python
-test_report = remote_parallel_map(
-    summarize_event_chunk,
-    chunk_paths[:1],
-    func_cpu=1,
-    func_ram=2,
-)[0]
-
-print(test_report)
-```
-
-Then send the full chunk list.
+### Step 3: Process every chunk
 
 ```python
 reports = remote_parallel_map(

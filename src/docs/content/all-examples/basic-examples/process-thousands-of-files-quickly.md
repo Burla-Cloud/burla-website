@@ -81,22 +81,7 @@ def scan_log_file(input_path: str) -> dict:
 
 Return dictionaries for small metadata. Write larger outputs to shared storage and return paths.
 
-### Step 3: Smoke test a few files
-
-Run a small slice first. This catches path mistakes, encoding problems, package issues, and bad assumptions about the file format.
-
-```python
-test_reports = remote_parallel_map(
-    scan_log_file,
-    input_paths[:20],
-    func_cpu=1,
-    func_ram=2,
-)
-
-print(test_reports[:2])
-```
-
-If the reports look right, launch the full file list.
+### Step 3: Process every file
 
 ```python
 reports = remote_parallel_map(

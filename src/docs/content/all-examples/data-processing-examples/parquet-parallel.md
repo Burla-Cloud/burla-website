@@ -87,22 +87,7 @@ def scan_parquet_file(key: str) -> dict:
 
 The worker does not send the file or dataframe back. It returns the QA facts needed for triage.
 
-### Step 3: Smoke test a few files
-
-Run a small sample first, but use it only to test the code path.
-
-```python
-test_stats = remote_parallel_map(
-    scan_parquet_file,
-    parquet_keys[:10],
-    func_cpu=1,
-    func_ram=4,
-)
-
-print(pd.DataFrame(test_stats).head())
-```
-
-If the columns and memory look right, scan the full list.
+### Step 3: Scan every file
 
 ```python
 stats = remote_parallel_map(

@@ -80,22 +80,7 @@ def enrich_chunk(ids: list[str]) -> list[dict]:
     return out
 ```
 
-### Step 3: Smoke test the real behavior
-
-Use a small run that still exercises real HTTP calls and retry handling.
-
-```python
-test_rows = remote_parallel_map(
-    enrich_chunk,
-    chunks[:1],
-    func_cpu=1,
-    func_ram=2,
-)[0]
-
-print(test_rows[:3])
-```
-
-### Step 4: Cap live workers
+### Step 3: Cap live workers
 
 `max_parallelism` is the global throttle.
 

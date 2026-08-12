@@ -78,22 +78,7 @@ def compute_ndvi(tile_id: str) -> dict:
     }
 ```
 
-### Step 3: Smoke test one tile
-
-Run one tile with the same Docker image and cloud permissions you will use for the full region.
-
-```python
-test_result = remote_parallel_map(
-    compute_ndvi,
-    tile_ids[:1],
-    func_cpu=2,
-    func_ram=8,
-)[0]
-
-print(test_result)
-```
-
-### Step 4: Run the tiles
+### Step 3: Run the tiles
 
 Each tile gets two CPUs and enough RAM for the bands.
 

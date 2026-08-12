@@ -83,22 +83,7 @@ def predict_batch(rows: list[dict]) -> list[dict]:
 
 The model stays cached on the worker process. Later batches assigned to that process do not reload it.
 
-### Step 3: Smoke test one batch
-
-Run one batch first so you can see model download time, memory, and output shape.
-
-```python
-test_rows = remote_parallel_map(
-    predict_batch,
-    batches[:1],
-    func_cpu=4,
-    func_ram=16,
-)[0]
-
-print(test_rows[:3])
-```
-
-### Step 4: Run the full scoring job
+### Step 3: Run the scoring job
 
 The output streams back as each batch finishes, so we can write JSONL without holding everything in memory.
 

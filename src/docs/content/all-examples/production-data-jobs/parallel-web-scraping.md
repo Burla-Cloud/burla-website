@@ -75,22 +75,7 @@ def scrape_chunk(urls: list[str]) -> list[dict]:
 
 Returning error rows is important. A failed page is still data about the archive.
 
-### Step 3: Smoke test a chunk
-
-Run one chunk and inspect both successes and failures.
-
-```python
-test_rows = remote_parallel_map(
-    scrape_chunk,
-    chunks[:1],
-    func_cpu=1,
-    func_ram=2,
-)[0]
-
-print(test_rows[:5])
-```
-
-### Step 4: Stream the crawl
+### Step 3: Stream the crawl
 
 Chunks stream back as they finish, so the scrape can run for hours without building one giant result list.
 

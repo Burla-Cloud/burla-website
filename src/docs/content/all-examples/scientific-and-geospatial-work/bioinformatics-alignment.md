@@ -76,23 +76,7 @@ def align_sample(job: dict) -> dict:
 
 The command is exactly the command you would run in a terminal. Burla only changes how many samples can run at once.
 
-### Step 3: Smoke test one sample
-
-Run one sample with the real image before launching the cohort.
-
-```python
-test_report = remote_parallel_map(
-    align_sample,
-    sample_jobs[:1],
-    func_cpu=4,
-    func_ram=16,
-    image=IMAGE,
-)[0]
-
-print(test_report)
-```
-
-### Step 4: Run the cohort
+### Step 3: Run the cohort
 
 Each sample gets 4 CPUs and 16GB of RAM.
 

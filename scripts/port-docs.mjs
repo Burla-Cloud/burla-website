@@ -33,8 +33,6 @@ const REGISTRY = {
   "demo-categories/basic-examples.md": "/docs/all-examples/basic-examples",
   "how-to-guides/read-and-write-gcs-files.md":
     "/docs/all-examples/basic-examples/read-and-write-gcs-files",
-  "how-to-guides/use-custom-docker-images-and-gpus.md":
-    "/docs/all-examples/basic-examples/use-custom-docker-images-and-gpus",
   "how-to-guides/run-python-in-the-background.md":
     "/docs/all-examples/basic-examples/run-python-in-the-background",
   "how-to-guides/limit-parallelism-for-apis-databases-and-websites.md":

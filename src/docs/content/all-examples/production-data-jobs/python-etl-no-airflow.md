@@ -82,22 +82,7 @@ def etl_one_file(key: str) -> dict:
 
 The insert is idempotent because `event_id` is the conflict key. That makes retries safe.
 
-### Step 3: Smoke test one file
-
-Run one file before opening many database connections.
-
-```python
-test_report = remote_parallel_map(
-    etl_one_file,
-    keys[:1],
-    func_cpu=1,
-    func_ram=2,
-)[0]
-
-print(test_report)
-```
-
-### Step 4: Protect Postgres
+### Step 3: Protect Postgres
 
 The database is the constraint, so `max_parallelism` is the important line.
 

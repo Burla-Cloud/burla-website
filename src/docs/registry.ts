@@ -158,6 +158,10 @@ const redirects = new Map(
     ...ALL_EXAMPLE_CATEGORIES.map(
       (category) => [category.legacyRoute, category.examples[0].route] as const,
     ),
+    [
+      "/docs/all-examples/basic-examples/use-custom-docker-images-and-gpus",
+      "/docs/all-examples/basic-examples/use-custom-docker-images",
+    ] as const,
     ["/docs/basics", "/docs/examples"] as const,
   ],
 );

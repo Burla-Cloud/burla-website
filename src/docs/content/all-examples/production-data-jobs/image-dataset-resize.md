@@ -94,22 +94,7 @@ def resize_chunk(image_keys: list[str]) -> list[dict]:
     return rows
 ```
 
-### Step 3: Smoke test one chunk
-
-The first chunk usually reveals missing dependencies, bad credentials, or PIL edge cases.
-
-```python
-test_rows = remote_parallel_map(
-    resize_chunk,
-    chunks[:1],
-    func_cpu=1,
-    func_ram=4,
-)[0]
-
-print(test_rows[:3])
-```
-
-### Step 4: Stream the manifest
+### Step 3: Stream the manifest
 
 Workers write images directly to S3. The client writes the report as chunks finish.
 

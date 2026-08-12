@@ -94,19 +94,6 @@ def summarize_shard(shard_id: int) -> dict:
 
 ### Step 3: Run the shards
 
-Smoke test one shard, then run the full shard list.
-
-```python
-test = remote_parallel_map(
-    summarize_shard,
-    [0],
-    func_cpu=2,
-    func_ram=8,
-)[0]
-
-print(test)
-```
-
 ```python
 shard_reports = remote_parallel_map(
     summarize_shard,

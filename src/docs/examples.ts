@@ -24,10 +24,17 @@ export const BASICS_CATEGORY: ExampleCategory = {
       icon: "cloud",
     },
     {
-      route: "/docs/all-examples/basic-examples/use-custom-docker-images-and-gpus",
-      title: "Use custom Docker images & GPUs",
+      route: "/docs/all-examples/basic-examples/use-custom-docker-images",
+      title: "Use custom Docker images",
       description:
-        "Run workers with custom Docker images and GPUs. Bring native tools and CUDA dependencies.",
+        "Run functions in your own Docker image. Include native tools and system packages.",
+      icon: "code",
+    },
+    {
+      route: "/docs/all-examples/basic-examples/use-gpus",
+      title: "Use GPUs",
+      description:
+        "Allocate one A100 or H100 to each function call. Run a PyTorch operation on the GPU.",
       icon: "gpu",
     },
     {

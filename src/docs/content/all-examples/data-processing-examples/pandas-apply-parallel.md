@@ -82,22 +82,7 @@ def enrich_chunk(job: dict) -> dict:
 
 The row function stays ugly if the real business logic is ugly. The scaling change is around it, not inside it.
 
-### Step 3: Smoke test one chunk
-
-Run one chunk before launching 1,200 workers.
-
-```python
-test_report = remote_parallel_map(
-    enrich_chunk,
-    chunks[:1],
-    func_cpu=2,
-    func_ram=8,
-)[0]
-
-print(test_report)
-```
-
-Then run the full job.
+### Step 3: Run the chunks
 
 ```python
 reports = remote_parallel_map(

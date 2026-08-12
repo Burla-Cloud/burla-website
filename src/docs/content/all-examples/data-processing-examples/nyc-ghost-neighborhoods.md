@@ -85,22 +85,7 @@ def process_month(job: MonthJob) -> dict:
 
 The missing-file behavior matters. A public corpus this old will have schema and availability edges.
 
-### Step 3: Smoke test a few months
-
-Run a mixed slice first so the code sees both old and new formats.
-
-```python
-test_results = remote_parallel_map(
-    process_month,
-    jobs[:24],
-    func_cpu=1,
-    func_ram=4,
-)
-
-print(test_results[:2])
-```
-
-Then scan the full corpus.
+### Step 3: Scan the full corpus
 
 ```python
 month_results = remote_parallel_map(

@@ -46,6 +46,7 @@ Each function call trains one model with one set of hyperparameters. It loads th
 ```python
 import pandas as pd
 import xgboost as xgb
+from burla import remote_parallel_map
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 
@@ -78,22 +79,7 @@ def train_model(params):
     return {"auc": auc, "params": params}
 ```
 
-### Step 4: Test one model
-
-Before launching the whole grid, run one model. This is the smoke test. It tells us the CSV path, packages, memory, and function shape are all sane.
-
-```python
-from burla import remote_parallel_map
-
-parameter_grid = [{"n_estimators": 300, "max_depth": 4, "eta": 0.1}]
-results = remote_parallel_map(train_model, parameter_grid, func_cpu=80)
-
-print(f"Model with params {parameter_grid[0]} yielded an AUC of: {results[0]}!")
-```
-
-We pass `func_cpu=80` because the XGBoost call uses `n_jobs=80`. There is no magic here. The function asks for the same hardware the training code is going to use.
-
-### Step 5: Run the grid
+### Step 4: Run the grid
 
 Now we send 36 parameter sets to the cluster.
 
