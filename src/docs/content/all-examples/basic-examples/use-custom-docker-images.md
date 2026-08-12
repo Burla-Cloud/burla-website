@@ -1,60 +1,60 @@
 ---
-description: Run worker functions inside an image with the system packages they need.
+description: Choose a public or private container image from Settings or Python.
 ---
 
 # Use custom Docker images
 
-Pass `image` to run a function inside your own Docker image. This example adds Pandoc, a native command-line tool that is not in Burla's default Python image.
+Burla runs ordinary Docker images. No Burla-specific build is required.
+
+A compatible image needs a Linux amd64 variant, `sh`, and the same Python major and minor version as your local environment. This example uses the public `python:3.12-slim` image.
 
 ## Before you run this
 
 1. Complete [Getting Started](/docs/get-started).
-2. Install Docker, create a public Docker Hub repository named `burla-pandoc`, and sign in with `docker login`.
-3. Check `python --version`. The image must use the same Python major and minor version as your local environment.
+2. Use Python 3.12 locally, or replace the image tag below with your Python version.
 
-## Step 1: Build and push the image
+## Option 1: Choose an image in Settings
 
-Create a `Dockerfile`. This example assumes your local environment uses Python 3.12:
+Run `burla dashboard`, open **Settings**, and set **Container Image → Image URI** to:
 
-```dockerfile
-FROM python:3.12-slim
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends pandoc \
-    && rm -rf /var/lib/apt/lists/*
+```text
+python:3.12-slim
 ```
 
-Build an image for Burla's worker architecture, then push it to a public Docker Hub repository:
-
-```bash
-docker build --platform linux/amd64 -t YOUR_USERNAME/burla-pandoc:latest .
-docker push YOUR_USERNAME/burla-pandoc:latest
-```
-
-## Step 2: Run a function inside the image
+Start the virtual machines from the dashboard. Since those workers are already running, use `grow=False`:
 
 ```python
-import subprocess
+import platform
 from burla import remote_parallel_map
 
-def render_markdown(markdown):
-    return subprocess.check_output(
-        ["pandoc", "--from=markdown", "--to=html"],
-        input=markdown,
-        text=True,
-    ).strip()
+def python_version(_):
+    return ".".join(platform.python_version_tuple()[:2])
 
-html = remote_parallel_map(
-    render_markdown,
-    ["Hello **Burla**"],
-    image="YOUR_USERNAME/burla-pandoc:latest",
-    grow=True,
-)
-print(html)
+print(remote_parallel_map(python_version, [None], grow=False))
 ```
-
-`grow=True` lets Burla boot a worker with this image when no matching worker is running.
 
 ```bash
-['<p>Hello <strong>Burla</strong></p>']
+['3.12']
 ```
+
+## Option 2: Choose an image in Python
+
+Pass the image URI directly to `remote_parallel_map`:
+
+```python
+print(remote_parallel_map(
+    python_version,
+    [None],
+    image="python:3.12-slim",
+))
+```
+
+Burla uses a matching ready worker or boots one with that image.
+
+## Private images
+
+Public images need no registry credentials.
+
+On GCP clusters with cloud storage enabled, Burla attaches the default Compute Engine service account and retries private `docker.pkg.dev` pulls with its credentials. Grant that service account Artifact Registry Reader access.
+
+Burla does not currently authenticate to private Amazon ECR or Azure Container Registry repositories automatically.
