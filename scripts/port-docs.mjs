@@ -37,8 +37,6 @@ const REGISTRY = {
     "/docs/all-examples/basic-examples/run-python-in-the-background",
   "how-to-guides/limit-parallelism-for-apis-databases-and-websites.md":
     "/docs/all-examples/basic-examples/limit-parallelism-for-apis-databases-and-websites",
-  "how-to-guides/combine-many-results-files-into-one-map-reduce.md":
-    "/docs/all-examples/basic-examples/combine-many-results-files-into-one-map-reduce",
   "how-to-guides/choose-how-to-split-your-work.md":
     "/docs/all-examples/basic-examples/choose-how-to-split-your-work",
   "demo-blogs/process-thousands-of-files-quickly.md":

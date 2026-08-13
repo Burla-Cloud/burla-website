@@ -66,4 +66,6 @@ Tuple inputs are unpacked into separate arguments, so the function for this list
 
 ## Keep outputs small
 
-Return numbers, short strings, or small dicts. Results are shipped back to your machine, so for anything big, write a file from inside the worker and return its path. On a deployed cluster `/workspace/shared` is backed by your cloud storage: see [Read/Write Files to Cloud Storage](/docs/all-examples/basic-examples/read-and-write-gcs-files). To combine many results into one, see [Combine many results/files into one](/docs/all-examples/basic-examples/combine-many-results-files-into-one-map-reduce).
+Return numbers, short strings, or small dicts. Results are shipped back to your machine, so for anything big, write a file from inside the worker and return its path. On a deployed cluster `/workspace/shared` is backed by your cloud storage: see [Read/Write Files to Cloud Storage](/docs/all-examples/basic-examples/read-and-write-gcs-files).
+
+When the final answer needs every result at once, combine them after `remote_parallel_map` returns. Do that on your machine when the results are small, or in a second one-input Burla call over the paths when they are not, as in [Process thousands of files quickly](/docs/all-examples/basic-examples/process-thousands-of-files-quickly).

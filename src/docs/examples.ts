@@ -60,13 +60,6 @@ export const BASICS_CATEGORY: ExampleCategory = {
       icon: "gate",
     },
     {
-      route: "/docs/all-examples/basic-examples/combine-many-results-files-into-one-map-reduce",
-      title: "Combine many results/files into one",
-      description:
-        "Reduce many worker outputs into one result. Use a simple map-reduce pattern.",
-      icon: "merge",
-    },
-    {
       route: "/docs/all-examples/basic-examples/choose-how-to-split-your-work",
       title: "Decide how to split your work",
       description:
