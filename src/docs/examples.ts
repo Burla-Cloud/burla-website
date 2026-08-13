@@ -54,9 +54,9 @@ export const BASICS_CATEGORY: ExampleCategory = {
     },
     {
       route: "/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers",
-      title: "Pass API keys & secrets to workers",
+      title: "Pass API keys and secrets to workers",
       description:
-        "Read env vars on your machine, not on workers. Secrets travel inside the pickled function.",
+        "Use an API key from your local environment inside a remote function.",
       icon: "gate",
     },
     {
