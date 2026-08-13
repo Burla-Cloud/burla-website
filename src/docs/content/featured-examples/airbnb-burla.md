@@ -1,210 +1,153 @@
 ---
 cover: /docs-assets/more-examples/airbnb-burla-cover.webp
 coverY: 0
+description: Process 1.7 million Inside Airbnb photo rows and 50.7 million reviews through staged CLIP, embedding, and Haiku filters.
 ---
 
-# Test Airbnb hypotheses at public-data scale
+# Analyze 1.7 million Airbnb listing photos
 
-In this example we:
+This pipeline turns public [Inside Airbnb](https://insideairbnb.com/get-the-data/) exports into photo galleries and statistical findings. The published run covers 119 cities, 282 city-snapshot pairs, 1.74 million latest listings, 1.71 million photo-score rows, and 50.69 million reviews.
 
-* Process every public Inside Airbnb listing across 119 cities and 4 quarterly snapshots.
-* CLIP-score 1.7M photos, then use Claude Haiku Vision to validate the shortlists.
-* Analyze 50,686,612 reviews with a staged review funnel.
-* Reduce everything into reusable Parquet artifacts and site JSON.
+CLIP ranks the photos, Claude Haiku validates small visual shortlists, and a separate review funnel narrows tens of millions of reviews before asking Haiku to score them. You can [explore the published result](https://burla-cloud.github.io/examples/airbnb-burla-demo/) or [read the complete source](https://github.com/Burla-Cloud/examples/tree/main/airbnb-burla-demo).
 
-This is the demo where the infrastructure really changes the experiment. A few cities can make a nice story. The whole corpus tells you whether the story survives contact with the rest of the world.
+## Before you run
 
-### Dataset: Inside Airbnb snapshots
+Complete [Getting Started](/docs/get-started), then deploy the cluster with `burla deploy`. This example passes large artifacts between separate remote calls through `/workspace/shared`, which is available inside workers on a deployed cluster. The local Python process cannot open those paths.
 
-The input is public city-level Inside Airbnb data: listings, photos, and reviews across multiple quarterly snapshots.
+Clone the example and install it with Python 3.12:
 
-```python
-import json
-from dataclasses import dataclass
-from pathlib import Path
-
-from burla import remote_parallel_map
-
-ROOT = Path("/workspace/shared/airbnb")
-LISTING_DIR = ROOT / "listings"
-PHOTO_DIR = ROOT / "photos"
-REVIEW_DIR = ROOT / "reviews"
-FINAL_DIR = ROOT / "final"
-N_WORKERS = 1000
-
-@dataclass(frozen=True)
-class CitySnapshot:
-    city_slug: str
-    snapshot: str
-    listings_url: str
-    reviews_url: str
-
-city_snapshots = [
-    CitySnapshot(**row)
-    for row in json.loads(Path("inside-airbnb-snapshots.json").read_text())
-]
+```bash
+git clone https://github.com/Burla-Cloud/examples.git
+cd examples/airbnb-burla-demo
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+export ANTHROPIC_API_KEY=...
 ```
 
-### Step 1: Write artifacts, not vibes
+The full workload uses paid cloud compute and the Anthropic API. Preload the two model weight sets once so hundreds of workers do not download the same files:
 
-Every stage writes Parquet under `/workspace/shared/airbnb`. That way a failed GPU stage does not force a listing re-download, and a new correlation test can reuse the same scored files.
-
-```python
-def run_stage(worker_fn, inputs, *, cpu=1, ram=8, parallelism=1000):
-    return remote_parallel_map(
-        worker_fn,
-        inputs,
-        func_cpu=cpu,
-        func_ram=ram,
-        max_parallelism=parallelism,
-        grow=True,
-        spinner=False,
-    )
+```bash
+python scripts/preload_clip_weights.py
+python scripts/preload_st_weights.py
 ```
 
-That wrapper is not magic. It just keeps the resource choices visible at each stage.
+The repository's `make all` target still includes the deprecated YOLO stage that failed during the published run. Its partial output is not needed for the photo galleries. Run the active stages directly, and invoke the review stage without the Makefile's reuse flags:
 
-### Step 2: Normalize listings first
-
-The listing stage downloads each city snapshot, keeps the columns the later stages need, and writes one Parquet file per city snapshot.
-
-```python
-def process_listing_snapshot(snapshot: CitySnapshot) -> dict:
-    import pandas as pd
-
-    df = pd.read_csv(snapshot.listings_url)
-    keep = df[[
-        "id",
-        "name",
-        "neighbourhood_cleansed",
-        "latitude",
-        "longitude",
-        "price",
-        "review_scores_rating",
-    ]].copy()
-    keep["city_slug"] = snapshot.city_slug
-    keep["snapshot"] = snapshot.snapshot
-
-    LISTING_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = LISTING_DIR / f"{snapshot.city_slug}-{snapshot.snapshot}.parquet"
-    keep.to_parquet(out_path, index=False)
-    return {"city_slug": snapshot.city_slug, "snapshot": snapshot.snapshot, "rows": len(keep), "path": str(out_path)}
+```bash
+make PY="$PWD/.venv/bin/python" \
+  stage00 stage01 stage02a stage02b stage07 \
+  stage05b stage05c
+python -m src.stages.s04_score_reviews
+make PY="$PWD/.venv/bin/python" stage05 stage06 site_data
 ```
 
-Run one city before the full matrix.
+The code below is excerpted from those stage scripts. The complete repository contains the worker functions, prompts, checkpoint handling, and site renderer.
 
-```python
-test_listing = run_stage(process_listing_snapshot, city_snapshots[:1], cpu=1, ram=4, parallelism=1)[0]
-print(test_listing)
+## The pipeline
+
+```text
+Inside Airbnb CSV exports
+  -> listing, calendar, and photo Parquet files
+  -> CLIP scores and Haiku-validated photo shortlists
+  -> heuristic, embedding, and Haiku review scores
+  -> findings and gallery JSON
 ```
 
-Then run every city snapshot.
+### 1. Download each city snapshot
+
+The first stages discover up to four snapshots per city and validate each URL. One remote call then downloads each valid city-snapshot pair and writes a Parquet file to shared storage:
 
 ```python
-listing_reports = run_stage(
-    process_listing_snapshot,
-    city_snapshots,
-    cpu=1,
-    ram=4,
-    parallelism=500,
-)
-```
-
-### Step 3: Score every photo first
-
-The photo stage downloads image URLs, runs CLIP on CPU workers, and writes Parquet shards for the next stages. The broad pass stays cheap and parallel.
-
-The source notebook builds `photo_batches` from the listing artifacts, with each batch containing image URLs and listing ids.
-
-```python
-clip_reports = remote_parallel_map(
-    cpu_score_image_batch,
-    photo_batches,
+results = remote_parallel_map(
+    download_and_clean_city,
+    args_list,
     func_cpu=1,
     func_ram=4,
-    max_parallelism=N_WORKERS,
+    max_parallelism=min(300, len(args_list)),
     grow=True,
     spinner=False,
 )
 ```
 
-The broad pass should be cheap enough to run over every photo. It only needs to produce shortlist scores.
-
-### Step 4: Validate the photo shortlists
-
-The original YOLOv8 GPU stage is still in the source repo for completeness, but it is not the live photo pipeline. The published demo uses Haiku Vision to validate the CLIP shortlists for pets, TV placement, hectic kitchens, and drug-den vibes.
+Each result contains counts and a shared path, not the listing table. A larger reducer reads all of those files inside the cluster, keeps the latest row for each listing, and preserves the full snapshot history separately:
 
 ```python
-tv_validation = remote_parallel_map(
-    haiku_validate_tv_batch,
-    tv_batches,
-    func_cpu=2,
-    func_ram=8,
-    max_parallelism=N_WORKERS,
-    grow=True,
-    spinner=False,
-)
-```
-
-This is a useful split: cheap model over everything, expensive model only where it can change the answer.
-
-### Step 5: Funnel the reviews
-
-Reviews use the same shape: cheap heuristic scoring on every review, SBERT embeddings for the top 200,000, then Claude Haiku scoring for the top 12,000.
-
-The review batches are built from the downloaded review artifacts. Each stage narrows the candidate set before the next, more expensive stage.
-
-```python
-heuristic_reports = remote_parallel_map(
-    heuristic_score_batch,
-    review_batches,
-    func_cpu=1,
-    func_ram=2,
-    max_parallelism=N_WORKERS,
-    grow=True,
-    spinner=False,
-)
-
-embedding_reports = remote_parallel_map(
-    embed_reviews_batch,
-    embed_batches,
-    func_cpu=2,
-    func_ram=8,
-    max_parallelism=N_WORKERS,
-    grow=True,
-    spinner=False,
-)
-```
-
-Each stage writes an artifact. The next stage reads artifacts, not notebook variables.
-
-### Step 6: Reduce into analysis outputs
-
-The final reducer joins listings, photo labels, review scores, and bootstrap confidence intervals into the files used by the public site.
-
-```python
-def build_site_outputs(inputs: dict) -> dict:
-    listing_paths = inputs["listing_paths"]
-    photo_paths = inputs["photo_paths"]
-    review_paths = inputs["review_paths"]
-
-    outputs = reduce_airbnb_outputs(
-        listing_paths=listing_paths,
-        photo_paths=photo_paths,
-        review_paths=review_paths,
-        out_dir=str(FINAL_DIR),
-    )
-    return outputs
-
-[site_outputs] = remote_parallel_map(
-    build_site_outputs,
-    [{
-        "listing_paths": [r["path"] for r in listing_reports],
-        "photo_paths": [r["path"] for r in clip_reports],
-        "review_paths": [r["path"] for r in heuristic_reports],
-    }],
-    func_cpu=16,
+[merge_result] = remote_parallel_map(
+    merge_listings_parquets,
+    [MergeListingsArgs(
+        shared_root=SHARED_LISTINGS,
+        output_path=f"{SHARED_ROOT}/listings_clean.parquet",
+        history_path=f"{SHARED_ROOT}/listings_history.parquet",
+    )],
+    func_cpu=8,
     func_ram=64,
+    max_parallelism=1,
     grow=True,
+    spinner=False,
 )
 ```
+
+Calendar files follow the same pattern. Their latest 365-day availability summaries become the pipeline's occupancy proxy.
+
+### 2. Score the photo manifest with CLIP
+
+The photo stage splits the shared manifest into batches of 700 URLs. Each worker downloads and scores one batch, then writes one Parquet result:
+
+```python
+results = remote_parallel_map(
+    cpu_score_image_batch,
+    batches,
+    func_cpu=1,
+    func_ram=4,
+    max_parallelism=min(800, len(batches)),
+    grow=True,
+    spinner=False,
+)
+```
+
+The current stage uses CPU workers. A worker copies the preloaded ViT-B/32 weights from shared storage to its node's local `/tmp` once, then reuses the loaded model while processing its batch.
+
+CLIP produces broad candidate scores for pets, unusual rooms, and TV placement. Haiku only sees the top 1,500 pet, 4,000 room, and 2,000 TV candidates, with at most 200 API workers running at once.
+
+### 3. Narrow 50.7 million reviews
+
+The review source is append-only, so the pipeline downloads only the latest review export for each city and deduplicates by review ID. It rewrites the merged Parquet file into 5,000-row groups so each heuristic worker reads one row group rather than scanning the full file.
+
+The current source then keeps 250,000 reviews, embeds them with `all-MiniLM-L6-v2`, clusters them into 40 groups, and sends 12,000 candidates to Haiku:
+
+```python
+results = remote_parallel_map(
+    embed_reviews_batch,
+    batches,
+    func_cpu=2,
+    func_ram=8,
+    max_parallelism=min(200, len(batches)),
+    grow=True,
+    spinner=False,
+)
+```
+
+This call runs the embedding model on CPUs because it does not request `func_gpu`. Each batch writes its vectors and scores to shared Parquet; one 16-CPU reducer performs the clustering.
+
+### 4. Build the published artifacts
+
+One final 16-CPU, 64 GB worker joins the latest listings, calendar proxy, image scores, Haiku labels, review scores, and bootstrap intervals. It returns small JSON-compatible sections to the client, which writes the static site's data files.
+
+## Published result
+
+| Metric | Value |
+|---|---:|
+| Cities | 119 |
+| Validated city-snapshot pairs | 282 |
+| Latest listings | 1,740,077 |
+| Photo manifest rows | 1,945,032 |
+| Photo-score rows | 1,710,664 |
+| Reviews | 50,686,612 |
+| Peak workers recorded | 1,741 |
+
+The committed findings accept associations for the pet proxy, unusual-photo flag, and messiness quartile. They reject brightness and plant-count findings under the pipeline's confidence-interval rule.
+
+These are associations with an availability proxy, not causal estimates of bookings. `occupancy_365` counts every unavailable date, including dates blocked by a host. The pet correlation also uses CLIP or YOLO-derived features, not the Haiku-validated pet gallery.
+
+The committed runtime log totals 22.9 hours and $1,024.89 across repeated attempts, failures, and reruns. It is evidence of the development run, not a clean end-to-end benchmark.

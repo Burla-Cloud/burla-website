@@ -1,239 +1,242 @@
 ---
 cover: /docs-assets/more-examples/gpu-embedding-demo-cover.webp
 coverY: 0
+description: Embed Wikipedia text on up to eight A100s, store vector shards in shared storage, and search them from the client.
 ---
 
-# Embed 50K Wikipedia articles on A100s
+# Build Wikipedia semantic search on A100s
 
-In this example we:
+This example downloads rows from the `20231101.en` split of [Wikimedia's Wikipedia dataset](https://huggingface.co/datasets/wikimedia/wikipedia), embeds them with `BAAI/bge-large-en-v1.5` on up to eight A100s, and searches the resulting vectors from the local process.
 
-* Download 50,000 English Wikipedia articles from the Hugging Face `wikimedia/wikipedia` dataset.
-* Prepare small JSONL text shards on CPU workers.
-* Embed every shard with `BAAI/bge-large-en-v1.5` on A100 workers.
-* Write vector shards to shared storage, then search across the combined matrix.
+The default run embeds 50,000 rows across 50 jobs. The dataset has 41 source Parquet files, and the downloader wraps back to file zero after job 40. Nine jobs therefore repeat rows from earlier files, so this is not a corpus of 50,000 distinct articles.
 
-The goal is not to make a toy embedding script. The goal is to keep the real production shape visible: cheap CPU workers prepare text, expensive GPU workers run the model, and the only thing the client combines at the end is compact vector artifacts.
+Read the [complete script](https://github.com/Burla-Cloud/examples/blob/main/gpu-embedding-demo/demo.py) and its [source README](https://github.com/Burla-Cloud/examples/tree/main/gpu-embedding-demo).
 
-### Dataset: English Wikipedia
+## Before you run
 
-We use the `20231101.en` split of `wikimedia/wikipedia`. Each row has an article id, URL, title, and text body.
+This script is specific to GCP. Its local search stage reads Burla's shared bucket through the Google Cloud Storage API, so you need:
 
-For this demo we only use the first 50,000 articles. That is small enough to inspect and rerun, but large enough that the pipeline has the same shape as a real backfill.
+- a deployed GCP Burla cluster
+- A100 quota in the cluster's region
+- Google Application Default Credentials for the same project
+- Python 3.11 on the client
 
-```python
-import json
-import math
-import os
-from itertools import islice
-from pathlib import Path
+Complete [Getting Started](/docs/get-started) and run `burla deploy` in that GCP project before starting the pipeline.
 
-import numpy as np
-from burla import remote_parallel_map
-from datasets import load_dataset
+The custom image uses Python 3.11. Burla compares the client's Python major and minor version with each worker container, so a Python 3.12 client cannot use this image.
 
-MODEL_NAME = "BAAI/bge-large-en-v1.5"
-GPU_IMAGE = "jakezuliani/burla-embedder:latest"
-SHARED_ROOT = Path("/workspace/shared/vector_embeddings_demo")
+Clone the example and install the client dependencies:
 
-ARTICLE_COUNT = 50_000
-TEXT_SHARDS = 50
-ARTICLES_PER_SHARD = math.ceil(ARTICLE_COUNT / TEXT_SHARDS)
-MAX_GPU_PARALLELISM = int(os.environ.get("DEMO_MAX_GPU_PARALLELISM", 8))
+```bash
+git clone https://github.com/Burla-Cloud/examples.git
+cd examples/gpu-embedding-demo
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt pyarrow torch sentence-transformers
 ```
 
-`/workspace/shared` is backed by Burla shared storage. Anything written there by one worker can be read later by the client or by another worker.
+At the current public commit, `demo.py` references `io` and `np` without importing them. Add these imports before running it:
 
-The client environment needs `burla`, `datasets`, `numpy`, and `sentence-transformers`. The GPU worker environment comes from the image in the next step.
+```python
+import io
+import numpy as np
+```
 
-### Step 1: Use a CUDA image
+The full run uses paid A100 compute:
 
-For the GPU stage we use a custom image with PyTorch, `sentence-transformers`, `numpy`, and the model weights already installed.
+```bash
+python demo.py
+```
+
+The code below is excerpted from that script.
+
+## The pipeline
+
+```text
+Wikipedia Parquet files
+  -> 50 shared JSONL text shards
+  -> 50 shared vector and title shards
+  -> one remote query vector
+  -> local cosine-similarity search
+```
+
+### 1. Put the model in a CUDA image
+
+The included Dockerfile starts from a CUDA-enabled PyTorch image, installs the embedding libraries, and downloads the model at build time:
 
 ```dockerfile
-FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-runtime
 
-RUN pip install sentence-transformers numpy
+RUN pip install --no-cache-dir \
+      sentence-transformers==3.0.1 \
+      datasets==2.21.0 \
+      huggingface-hub==0.24.6
 
-RUN python - <<'PY'
-from sentence_transformers import SentenceTransformer
-SentenceTransformer("BAAI/bge-large-en-v1.5")
-PY
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-large-en-v1.5')"
 ```
 
-Build and push that image to a registry your Burla workers can pull from. In this example, the pushed image is:
+The source uses the published image `jakezuliani/burla-embedder:latest`. To own the image and its model cache, build the same Dockerfile for the workers' `linux/amd64` platform, push it, and replace `IMAGE` in `demo.py`:
 
-```python
-GPU_IMAGE = "jakezuliani/burla-embedder:latest"
+```bash
+docker buildx build \
+  --platform=linux/amd64 \
+  --push \
+  -t <registry>/burla-embedder:latest .
 ```
 
-Baking the model into the image is deliberate. Without it, every A100 worker starts by downloading the same model weights, and the demo turns into a network and cache test instead of an embedding job.
+### 2. Download text on CPU workers
 
-### Step 2: Prepare text shards on CPU workers
-
-The CPU stage downloads article text and writes 50 JSONL shards. Each shard contains 1,000 articles, trimmed to the first 2,000 characters so the GPU stage does predictable work.
+Each job downloads one source Parquet file, keeps its first 1,000 rows, trims each body to 2,000 characters, and writes JSONL under `/workspace/shared/vector_embeddings_demo/texts`:
 
 ```python
-def prepare_text_shard(shard_idx: int) -> dict:
-    start = shard_idx * ARTICLES_PER_SHARD
-    stop = min(start + ARTICLES_PER_SHARD, ARTICLE_COUNT)
-
-    dataset = load_dataset(
-        "wikimedia/wikipedia",
-        "20231101.en",
-        split="train",
-        streaming=True,
+def download_shard(shard_idx, articles_per_shard, shared_root):
+    parquet_url = PARQUET_URL_TEMPLATE.format(
+        shard_idx=shard_idx % N_PARQUET_FILES
     )
+    request = urllib.request.Request(
+        parquet_url,
+        headers={"User-Agent": "burla-demo/1.0"},
+    )
+    with urllib.request.urlopen(request) as response:
+        parquet_bytes = response.read()
 
-    rows = []
-    for row in islice(dataset, start, stop):
-        rows.append({
-            "id": row["id"],
-            "url": row["url"],
-            "title": " ".join(row["title"].split()),
-            "text": " ".join(row["text"].split())[:2_000],
-        })
+    table = pq.read_table(io.BytesIO(parquet_bytes))
+    table = table.slice(0, min(articles_per_shard, len(table)))
 
-    out_path = SHARED_ROOT / "texts" / f"shard-{shard_idx:05d}.jsonl"
+    out_path = Path(shared_root) / "texts" / f"shard-{shard_idx:05d}.jsonl"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text("\n".join(json.dumps(row) for row in rows))
-
-    return {"shard_idx": shard_idx, "rows": len(rows), "path": str(out_path)}
+    with out_path.open("w") as f:
+        for row in table.to_pylist():
+            record = {
+                "id": row["id"],
+                "title": row["title"],
+                "text": (row.get("text") or "")[:2000],
+            }
+            f.write(json.dumps(record) + "\n")
+    return str(out_path)
 ```
 
-Prepare all 50 shards.
+Burla unpacks each input tuple into the function's three arguments:
 
 ```python
-text_reports = remote_parallel_map(
-    prepare_text_shard,
-    range(TEXT_SHARDS),
+download_inputs = [
+    (i, ARTICLES_PER_SHARD, SHARED_ROOT)
+    for i in range(N_SHARDS)
+]
+text_paths = remote_parallel_map(
+    download_shard,
+    download_inputs,
+    image=IMAGE,
+    grow=True,
     func_cpu=2,
     func_ram=8,
-    grow=True,
+    max_parallelism=min(MAX_CPU_PARALLELISM, N_SHARDS),
 )
-
-total_rows = sum(report["rows"] for report in text_reports)
-print(f"Prepared {total_rows:,} Wikipedia articles")
 ```
 
-This stage does not ask for GPUs. It is just I/O and light string cleanup, so giving it A100s would make the example more expensive without making it clearer or faster in the way that matters.
+This stage uses the custom image for its Python packages but does not request a GPU.
 
-For 50,000 articles, simple streaming offsets keep the code easy to read. For a million-article run, I would shard by source Parquet file first so workers do not rescan earlier rows.
+### 3. Embed each shard on an A100
 
-### Step 3: Embed each shard on A100s
-
-Now each GPU worker reads one JSONL shard, loads the embedding model once, and writes two files:
-
-* a `.npy` matrix containing normalized float32 vectors
-* a metadata JSONL file containing ids, URLs, and titles in the same order
-
-The worker returns paths to those files. It does not return the vectors through Python.
+The embedding function reads one shared JSONL file, normalizes its vectors, and writes a float32 NumPy matrix plus matching IDs and titles. A module-level cache avoids loading the model again when one worker process receives another shard.
 
 ```python
-def embed_text_shard(report: dict) -> dict:
-    import json
-    from pathlib import Path
+cache = {}
 
-    import numpy as np
-    from sentence_transformers import SentenceTransformer
+def embed_shard(shard_path, model_name, shared_root):
+    if "model" not in cache:
+        cache["model"] = SentenceTransformer(model_name, device="cuda")
 
-    if not hasattr(embed_text_shard, "_model"):
-        embed_text_shard._model = SentenceTransformer(MODEL_NAME, device="cuda")
-
-    shard_idx = report["shard_idx"]
     rows = [
         json.loads(line)
-        for line in Path(report["path"]).read_text().splitlines()
-        if line.strip()
+        for line in Path(shard_path).read_text().splitlines()
     ]
-
     texts = [f"{row['title']}\n\n{row['text']}" for row in rows]
-    vectors = embed_text_shard._model.encode(
+    vectors = cache["model"].encode(
         texts,
         batch_size=64,
         normalize_embeddings=True,
+        show_progress_bar=False,
+        convert_to_numpy=True,
     ).astype("float32")
 
-    vector_path = SHARED_ROOT / "vectors" / f"shard-{shard_idx:05d}.npy"
-    meta_path = SHARED_ROOT / "metadata" / f"shard-{shard_idx:05d}.jsonl"
-    vector_path.parent.mkdir(parents=True, exist_ok=True)
-    meta_path.parent.mkdir(parents=True, exist_ok=True)
-
+    shard_name = Path(shard_path).stem.replace("shard-", "")
+    embedding_dir = Path(shared_root) / "embeddings"
+    embedding_dir.mkdir(parents=True, exist_ok=True)
+    vector_path = embedding_dir / f"emb-{shard_name}.npy"
+    ids_path = embedding_dir / f"ids-{shard_name}.json"
     np.save(vector_path, vectors)
-    meta_path.write_text("\n".join(json.dumps({
-        "id": row["id"],
-        "url": row["url"],
-        "title": row["title"],
-    }) for row in rows))
-
-    return {
-        "shard_idx": shard_idx,
-        "rows": len(rows),
-        "shape": list(vectors.shape),
-        "vector_path": str(vector_path),
-        "meta_path": str(meta_path),
-    }
+    ids_path.write_text(json.dumps({
+        "ids": [row["id"] for row in rows],
+        "titles": [row["title"] for row in rows],
+    }))
+    return {"emb_path": str(vector_path), "ids_path": str(ids_path)}
 ```
 
-Run the embedding stage.
+Request one A100 per call and cap the job at eight concurrent calls:
 
 ```python
-embedding_reports = remote_parallel_map(
-    embed_text_shard,
-    text_reports,
-    image=GPU_IMAGE,
-    func_gpu="A100",
-    func_cpu=4,
-    func_ram=32,
-    max_parallelism=MAX_GPU_PARALLELISM,
+embed_results = remote_parallel_map(
+    embed_shard,
+    [(path, MODEL_NAME, SHARED_ROOT) for path in text_paths],
+    image=IMAGE,
     grow=True,
+    func_gpu="A100",
+    max_parallelism=min(MAX_GPU_PARALLELISM, len(text_paths)),
+)
+```
+
+On GCP, `func_gpu="A100"` currently selects an A100 40 GB machine. `grow=True` starts matching nodes when the cluster does not already have enough, while `max_parallelism` limits how many A100 calls can run together.
+
+### 4. Cross the shared-storage boundary
+
+The worker paths returned above are not local paths. `/workspace/shared` is mounted inside worker containers, while the client reaches the same objects through GCS.
+
+The script embeds the query on one A100, then converts each worker path into a blob name:
+
+```python
+[query_vector] = remote_parallel_map(
+    embed_query,
+    [(QUERY, MODEL_NAME)],
+    image=IMAGE,
+    grow=True,
+    func_gpu="A100",
+    max_parallelism=1,
 )
 
-embedding_reports = sorted(embedding_reports, key=lambda r: r["shard_idx"])
-print(f"Embedded {sum(r['rows'] for r in embedding_reports):,} articles")
-print(f"Vector shape for first shard: {embedding_reports[0]['shape']}")
+storage_client = storage.Client(project=PROJECT_ID)
+bucket = storage_client.bucket(f"{PROJECT_ID}-burla-shared-workspace")
+
+def download(worker_path):
+    blob_name = worker_path.replace("/workspace/shared/", "", 1)
+    return bucket.blob(blob_name).download_as_bytes()
 ```
 
-`max_parallelism` is the GPU budget knob. If your account can run 8 A100 workers, use 8. If it can run 2, use 2. The code does not change.
-
-### Step 4: Search the vectors
-
-The expensive part is finished. Search only needs the vector shards, the metadata shards, and one query vector.
-
-For one query, running the model locally on CPU is fine. If you do not want the model on your client at all, write a tiny query-embedding function and run it with the same GPU image.
+`remote_parallel_map` does not promise result order, so the script sorts the embedding reports by path. It downloads each matrix and its matching title file, concatenates the matrices, and computes normalized inner products:
 
 ```python
-import json
-from pathlib import Path
-
-import numpy as np
-from sentence_transformers import SentenceTransformer
-
-query = "How do astronomers measure the distance to galaxies?"
-
-query_model = SentenceTransformer(MODEL_NAME)
-query_vector = query_model.encode(
-    [query],
-    normalize_embeddings=True,
-).astype("float32")[0]
-
 matrices = []
-metadata = []
+titles = []
+for result in sorted(embed_results, key=lambda item: item["emb_path"]):
+    matrices.append(np.load(io.BytesIO(download(result["emb_path"]))))
+    titles.extend(json.loads(download(result["ids_path"]))["titles"])
 
-for report in embedding_reports:
-    matrices.append(np.load(report["vector_path"]))
-    metadata.extend(
-        json.loads(line)
-        for line in Path(report["meta_path"]).read_text().splitlines()
-        if line.strip()
-    )
-
-matrix = np.vstack(matrices)
-scores = matrix @ query_vector
-top_indices = np.argsort(-scores)[:10]
-
-for rank, idx in enumerate(top_indices, start=1):
-    row = metadata[int(idx)]
-    print(f"{rank:>2}. {scores[int(idx)]:.3f}  {row['title']}  {row['url']}")
+matrix = np.concatenate(matrices, axis=0)
+scores = matrix @ np.asarray(query_vector, dtype="float32")
 ```
 
-This is the moment the example is trying to make boring: vectors are just files, metadata is just JSONL, and search is just a matrix multiply. Burla helped with the part that should be parallel, then got out of the way.
+## Reported result
+
+The source README records this output:
+
+```text
+Top 5 results for: 'Who invented the telephone?'
+
+  1. [0.8161] Alexander Graham Bell
+  2. [0.7474] Thomas A. Watson
+  3. [0.6338] André-Marie Ampère
+  4. [0.6276] Alessandro Volta
+  5. [0.5990] Sidney Howe Short
+```
+
+It reports about 3 to 4 minutes for the embedding stage after workers are ready and about 10 minutes for a run that includes boot and image pull. No machine-readable run log is included, so those timings are reported measurements rather than a reproducible benchmark.
