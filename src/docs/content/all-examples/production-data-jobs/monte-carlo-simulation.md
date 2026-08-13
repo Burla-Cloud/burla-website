@@ -1,83 +1,154 @@
 ---
 cover: /docs-assets/more-examples/monte-carlo-simulation-cover.webp
 coverY: 0
+description: Distribute independent option-price paths and reduce compact statistics into one estimate.
 ---
 
-# Run the Monte Carlo you actually meant to run
+# Price a European call with parallel Monte Carlo
 
-In this example we:
+This example divides an exact path count into remote NumPy calls. Each call returns only its count, payoff sum, and squared-payoff sum. The local process combines those statistics into a price estimate, standard error, and approximate 95% confidence interval.
 
-* Simulate 1,000,000,000 option price paths.
-* Split the run into 2,000 independent chunks.
-* Return sums and squared sums, then compute the final price and error bar locally.
+The [repository example](https://github.com/Burla-Cloud/examples/blob/main/monte-carlo-simulation/main.py) contains the same option model, but no recorded output or measured run. This page therefore makes no path-count or runtime claim.
 
-A smaller run is not the same experiment if the whole point is the error bar.
+## Before you run
 
-### Experiment: European call option
+Complete [Getting Started](/docs/get-started), then install the dependencies:
 
-Each path is independent, so the job does not need shared state or a distributed framework.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install burla numpy
+```
+
+The model uses these fixed inputs:
+
+- `S0 = 100`: initial asset price
+- `K = 95`: strike price
+- `T = 1`: years to expiration
+- `r = 0.01`: continuously compounded risk-free rate
+- `sigma = 0.3`: annualized volatility
+
+You choose the total paths and task count when running the script. More paths consume more compute. More tasks reduce the number of NumPy values held by each call, but actual concurrency still depends on the workers available in your cluster.
+
+## The simulation
+
+Save the following as `main.py`:
 
 ```python
+import argparse
 import math
-from dataclasses import dataclass
 
 import numpy as np
 from burla import remote_parallel_map
 
-TOTAL = 1_000_000_000
-N_CHUNKS = 2_000
-PER_CHUNK = TOTAL // N_CHUNKS
-```
+PARAMS = {
+    "S0": 100.0,
+    "K": 95.0,
+    "T": 1.0,
+    "r": 0.01,
+    "sigma": 0.3,
+}
+BASE_SEED = 42
 
-### Step 1: Plan independent chunks
 
-The chunk id becomes part of the random seed, so reruns are reproducible without shared state.
+def run_chunk(task: dict) -> dict:
+    chunk_id = task["chunk_id"]
+    n_paths = task["n_paths"]
+    seed = np.random.SeedSequence([BASE_SEED, chunk_id])
+    rng = np.random.default_rng(seed)
 
-```python
-@dataclass(frozen=True)
-class SimulationTask:
-    chunk_id: int
-    n_paths: int
-    params: dict
+    z = rng.standard_normal(n_paths)
+    terminal_price = PARAMS["S0"] * np.exp(
+        (
+            PARAMS["r"]
+            - 0.5 * PARAMS["sigma"] ** 2
+        )
+        * PARAMS["T"]
+        + PARAMS["sigma"]
+        * np.sqrt(PARAMS["T"])
+        * z
+    )
+    payoff = np.maximum(
+        terminal_price - PARAMS["K"],
+        0.0,
+    ) * np.exp(-PARAMS["r"] * PARAMS["T"])
 
-params = {"S0": 100.0, "K": 95.0, "T": 1.0, "r": 0.01, "sigma": 0.3}
-tasks = [SimulationTask(i, PER_CHUNK, params) for i in range(N_CHUNKS)]
-
-print(f"Built {len(tasks):,} chunks of {PER_CHUNK:,} paths")
-```
-
-### Step 2: Simulate on the worker
-
-The worker is normal NumPy. It returns enough statistics to combine results exactly.
-
-```python
-def run_chunk(task: SimulationTask) -> dict:
-    p = task.params
-    rng = np.random.default_rng(seed=42 + task.chunk_id)
-    z = rng.standard_normal(task.n_paths)
-    st = p["S0"] * np.exp((p["r"] - 0.5 * p["sigma"] ** 2) * p["T"] + p["sigma"] * np.sqrt(p["T"]) * z)
-    payoff = np.maximum(st - p["K"], 0.0) * np.exp(-p["r"] * p["T"])
     return {
-        "chunk_id": task.chunk_id,
-        "n": task.n_paths,
+        "chunk_id": chunk_id,
+        "n": n_paths,
         "sum": float(payoff.sum()),
-        "sum_sq": float((payoff ** 2).sum()),
+        "sum_sq": float(np.square(payoff).sum()),
     }
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--paths", type=int, required=True)
+parser.add_argument("--chunks", type=int, required=True)
+args = parser.parse_args()
+
+if args.paths < 2:
+    raise ValueError("--paths must be at least 2")
+if args.chunks < 1 or args.chunks > args.paths:
+    raise ValueError("--chunks must be between 1 and --paths")
+
+paths_per_chunk, remainder = divmod(
+    args.paths,
+    args.chunks,
+)
+tasks = [
+    {
+        "chunk_id": chunk_id,
+        "n_paths": (
+            paths_per_chunk
+            + (1 if chunk_id < remainder else 0)
+        ),
+    }
+    for chunk_id in range(args.chunks)
+]
+
+results = remote_parallel_map(run_chunk, tasks)
+results.sort(key=lambda result: result["chunk_id"])
+
+total_n = sum(result["n"] for result in results)
+total_sum = sum(result["sum"] for result in results)
+total_sum_sq = sum(
+    result["sum_sq"]
+    for result in results
+)
+
+mean = total_sum / total_n
+sample_variance = max(
+    0.0,
+    (
+        total_sum_sq
+        - total_sum ** 2 / total_n
+    )
+    / (total_n - 1),
+)
+standard_error = math.sqrt(
+    sample_variance / total_n
+)
+margin = 1.96 * standard_error
+
+print(f"paths: {total_n:,}")
+print(f"price: {mean:.6f}")
+print(f"standard error: {standard_error:.6f}")
+print(
+    "approximate 95% confidence interval: "
+    f"[{mean - margin:.6f}, {mean + margin:.6f}]"
+)
 ```
 
-No simulated path comes back to the client. Only sufficient statistics do.
+`SeedSequence` gives each chunk a distinct deterministic random stream. Burla may return results in any order, so sorting by `chunk_id` also fixes the floating-point reduction order. The same arguments then produce the same output.
 
-### Step 3: Run and reduce locally
+The division with `divmod` assigns every requested path even when the total is not divisible by the number of chunks. No simulated price path leaves a worker.
 
-The result list is tiny because the workers do not return raw paths.
+The task plan and final reduction stay in the local process. Only small task and result dictionaries cross the network, and the script does not use shared storage.
 
-```python
-results = remote_parallel_map(run_chunk, tasks, func_cpu=1, func_ram=2, grow=True)
+## Run it
 
-total_n = sum(r["n"] for r in results)
-mean = sum(r["sum"] for r in results) / total_n
-var = (sum(r["sum_sq"] for r in results) / total_n) - mean ** 2
-se = math.sqrt(var / total_n)
-
-print({"price": mean, "standard_error": se, "paths": total_n})
+```bash
+python main.py --paths <total-path-count> --chunks <task-count>
 ```
+
+The estimate is the discounted expected payoff under this geometric Brownian motion model. The reported standard error covers Monte Carlo sampling error under that model, not uncertainty in the model or its parameters. The confidence interval uses a normal approximation.

@@ -1,22 +1,42 @@
 ---
 cover: /docs-assets/more-examples/image-dataset-resize-cover.webp
 coverY: 0
+description: Resize S3 images in parallel and stream a local manifest of every result.
 ---
 
-# Resize the whole image corpus before training on it
+# Resize an image dataset in S3
 
-In this example we:
+This example runs one remote call per source image. Each call fixes EXIF orientation, creates JPEG variants whose longest edge is at most 256, 512, or 1024 pixels, and writes them to a destination bucket.
 
-* List a large source image corpus from S3.
-* Resize each image into 256, 512, and 1024 pixel variants.
-* Write resized images back to S3.
-* Stream a manifest with successes, dimensions, and failures.
+The image corpus belongs to you. The [repository example](https://github.com/Burla-Cloud/examples/blob/main/image-dataset-resize/main.py) does not include images or a measured run, so this page does not claim a corpus size or runtime.
 
-A preview folder always looks fine. The full corpus is where the EXIF rotations, corrupt PNGs, CMYK JPEGs, and odd aspect ratios live.
+## Before you run
 
-### Dataset: source images in S3
+1. Complete [Getting Started](/docs/get-started) with AWS.
+2. Use a deployed cluster. Run `burla deploy`, then grant its `burla-node` IAM role `s3:GetObject` on the source prefix and `s3:PutObject` on the destination prefix.
+3. Install the dependencies:
 
-Assume raw images live under `s3://my-photos/originals/` and outputs should be written to `s3://my-photos-resized/`.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install burla boto3 Pillow
+```
+
+Set the two buckets, their prefixes, and the most image calls that may run at once:
+
+```bash
+export SRC_BUCKET="<source-bucket>"
+export DST_BUCKET="<destination-bucket>"
+export SRC_PREFIX="<source-prefix>"
+export DST_PREFIX="<destination-prefix>"
+export MAX_PARALLELISM="<maximum-live-calls>"
+```
+
+The local AWS identity must be able to list the source prefix. The worker role handles object reads and writes.
+
+## The resize script
+
+Save the following as `main.py`:
 
 ```python
 import io
@@ -25,92 +45,116 @@ import os
 from pathlib import Path
 
 import boto3
-from PIL import Image, ImageOps
 from burla import remote_parallel_map
+from PIL import Image, ImageOps
 
-SRC_BUCKET = "my-photos"
-DST_BUCKET = "my-photos-resized"
-SRC_PREFIX = "originals/"
-OUT_PREFIX = "resized/"
-MANIFEST_PATH = Path("/workspace/shared/image-resize/manifest.jsonl")
-CHUNK_SIZE = 1_000
-SIZES = [256, 512, 1024]
-```
+SRC_BUCKET = os.environ["SRC_BUCKET"]
+DST_BUCKET = os.environ["DST_BUCKET"]
+SRC_PREFIX = os.environ["SRC_PREFIX"].strip("/")
+DST_PREFIX = os.environ["DST_PREFIX"].strip("/")
+MAX_PARALLELISM = int(os.environ["MAX_PARALLELISM"])
+SIZES = (256, 512, 1024)
+MANIFEST_PATH = Path("resize-manifest.jsonl")
 
-### Step 1: Chunk the image keys
+if MAX_PARALLELISM < 1:
+    raise ValueError("MAX_PARALLELISM must be at least 1")
 
-The client lists source keys and batches them into 1,000-image chunks.
+if SRC_PREFIX:
+    SRC_PREFIX += "/"
+if DST_PREFIX:
+    DST_PREFIX += "/"
 
-```python
+s3 = boto3.client("s3")
 keys = []
-paginator = boto3.client("s3").get_paginator("list_objects_v2")
-for page in paginator.paginate(Bucket=SRC_BUCKET, Prefix=SRC_PREFIX):
-    keys += [
+pages = s3.get_paginator("list_objects_v2").paginate(
+    Bucket=SRC_BUCKET,
+    Prefix=SRC_PREFIX,
+)
+for page in pages:
+    keys.extend(
         obj["Key"]
         for obj in page.get("Contents", [])
         if obj["Key"].lower().endswith((".jpg", ".jpeg", ".png"))
-    ]
+    )
 
-chunks = [keys[i:i + CHUNK_SIZE] for i in range(0, len(keys), CHUNK_SIZE)]
+print(f"Found {len(keys):,} images")
 
-print(f"Built {len(chunks):,} image chunks from {len(keys):,} keys")
-```
 
-### Step 2: Resize inside the worker
+def resize_one(key: str) -> dict:
+    worker_s3 = boto3.client("s3")
+    output_keys = []
 
-The worker opens each image, fixes EXIF orientation, writes every target size, and returns a report row. Bad images become manifest rows instead of crashing the whole job.
+    try:
+        body = worker_s3.get_object(
+            Bucket=SRC_BUCKET,
+            Key=key,
+        )["Body"].read()
+        with Image.open(io.BytesIO(body)) as opened:
+            image = ImageOps.exif_transpose(opened).convert("RGB")
 
-```python
-def resize_chunk(image_keys: list[str]) -> list[dict]:
-    s3 = boto3.client("s3")
-    rows = []
+        relative_key = key[len(SRC_PREFIX):]
+        for size in SIZES:
+            resized = image.copy()
+            resized.thumbnail(
+                (size, size),
+                Image.Resampling.LANCZOS,
+            )
+            buffer = io.BytesIO()
+            resized.save(
+                buffer,
+                format="JPEG",
+                quality=85,
+                optimize=True,
+                progressive=True,
+            )
 
-    for key in image_keys:
-        try:
-            body = s3.get_object(Bucket=SRC_BUCKET, Key=key)["Body"].read()
-            img = ImageOps.exif_transpose(Image.open(io.BytesIO(body))).convert("RGB")
-            stem = os.path.splitext(os.path.basename(key))[0]
+            output_key = f"{DST_PREFIX}{size}/{relative_key}.jpg"
+            worker_s3.put_object(
+                Bucket=DST_BUCKET,
+                Key=output_key,
+                Body=buffer.getvalue(),
+                ContentType="image/jpeg",
+            )
+            output_keys.append(output_key)
 
-            output_keys = []
-            for size in SIZES:
-                resized = img.copy()
-                resized.thumbnail((size, size), Image.Resampling.LANCZOS)
-                buf = io.BytesIO()
-                resized.save(buf, format="JPEG", quality=85, optimize=True, progressive=True)
-                out_key = f"{OUT_PREFIX}{size}/{stem}.jpg"
-                s3.put_object(Bucket=DST_BUCKET, Key=out_key, Body=buf.getvalue())
-                output_keys.append(out_key)
+        return {
+            "source_key": key,
+            "width": image.width,
+            "height": image.height,
+            "output_keys": output_keys,
+            "ok": True,
+        }
+    except Exception as error:
+        return {
+            "source_key": key,
+            "output_keys": output_keys,
+            "ok": False,
+            "error": repr(error),
+        }
 
-            rows.append({
-                "key": key,
-                "orig_w": img.size[0],
-                "orig_h": img.size[1],
-                "output_keys": output_keys,
-                "ok": True,
-            })
-        except Exception as exc:
-            rows.append({"key": key, "ok": False, "error": repr(exc)})
 
-    return rows
-```
-
-### Step 3: Stream the manifest
-
-Workers write images directly to S3. The client writes the report as chunks finish.
-
-```python
-MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-with MANIFEST_PATH.open("w") as f:
-    for chunk_result in remote_parallel_map(
-        resize_chunk,
-        chunks,
-        func_cpu=1,
-        func_ram=4,
+with MANIFEST_PATH.open("w") as manifest:
+    for row in remote_parallel_map(
+        resize_one,
+        keys,
+        max_parallelism=MAX_PARALLELISM,
         generator=True,
-        grow=True,
     ):
-        for row in chunk_result:
-            f.write(json.dumps(row) + "\n")
+        manifest.write(json.dumps(row) + "\n")
 
 print(MANIFEST_PATH)
 ```
+
+Appending `.jpg` to the full relative source key preserves subdirectories and prevents two same-named images in different folders from overwriting each other. Rerunning the script overwrites the same deterministic destination keys.
+
+`thumbnail` preserves aspect ratio and never enlarges a smaller image. It does not crop every result to a square.
+
+Workers read and write S3 directly. `resize-manifest.jsonl` is written by the local process as calls finish, so it remains on your machine. A failed row includes any destination keys written before the failure.
+
+## Run it
+
+```bash
+python main.py
+```
+
+Manifest rows follow completion order. `max_parallelism` caps live resize calls, not the total number of source images.

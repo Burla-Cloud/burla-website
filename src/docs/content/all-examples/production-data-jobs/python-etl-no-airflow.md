@@ -1,22 +1,55 @@
 ---
 cover: /docs-assets/more-examples/python-etl-no-airflow-cover.webp
 coverY: 0
+description: Transform a gzipped JSONL file drop in parallel while capping Postgres connections.
 ---
 
-# Run the file-drop ETL before it becomes a platform project
+# Load an S3 file drop into Postgres
 
-In this example we:
+This example maps one gzipped JSONL object to one remote ETL call. Each call reads from S3, transforms its rows, and opens one Postgres connection. `max_parallelism` therefore limits the connections created by this job.
 
-* List 10,000 gzipped JSON files from S3.
-* Transform each file in a Burla worker.
-* Load cleaned rows into Postgres while capping database concurrency.
-* Return per-file load reports so retries are obvious.
+The input bucket and database belong to you. The [repository example](https://github.com/Burla-Cloud/examples/blob/main/python-etl-no-airflow/main.py) does not include a public dataset or a measured run, so this page does not claim a file count or runtime.
 
-This is the kind of job that turns into an Airflow ticket when the actual problem is just: yesterday's files are too slow on one machine.
+## Before you run
 
-### Dataset: daily S3 file drop
+1. Complete [Getting Started](/docs/get-started) with AWS.
+2. Use a deployed cluster. Run `burla deploy`, then grant its `burla-node` IAM role `s3:GetObject` access to the source prefix.
+3. Make Postgres reachable from the Burla workers.
+4. Install the dependencies:
 
-Assume each raw file is gzipped JSONL under a date prefix.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install burla boto3 psycopg2-binary
+```
+
+Place each input object under `raw/<RUN_DATE>/`. It must contain one JSON object per line with `event_id`, `user_id`, `event_type`, and `ts` fields. `amount` and `country` are optional. Create the destination table before running the job:
+
+```sql
+CREATE TABLE events (
+    event_id text PRIMARY KEY,
+    user_id text NOT NULL,
+    event_type text NOT NULL,
+    ts timestamptz NOT NULL,
+    amount double precision NOT NULL,
+    country text NOT NULL
+);
+```
+
+Set the source, run date, database connection string, and the number of connections this job may use:
+
+```bash
+export S3_BUCKET="<source-bucket>"
+export RUN_DATE="<YYYY-MM-DD>"
+export DATABASE_URL="<postgres-connection-string>"
+export MAX_DB_LOADERS="<connection-limit-for-this-job>"
+```
+
+Your local AWS identity must be able to list the source prefix. The worker role handles object reads.
+
+## The ETL script
+
+Save the following as `main.py`:
 
 ```python
 import gzip
@@ -29,81 +62,105 @@ import psycopg2
 from burla import remote_parallel_map
 from psycopg2.extras import execute_values
 
-S3_BUCKET = "my-events-bucket"
-DATE = "2025-04-19"
+S3_BUCKET = os.environ["S3_BUCKET"]
+RUN_DATE = os.environ["RUN_DATE"]
 DATABASE_URL = os.environ["DATABASE_URL"]
-MAX_DB_LOADERS = 25
-REPORT_PATH = Path("/workspace/shared/file-drop-etl/load-report.jsonl")
-```
+MAX_DB_LOADERS = int(os.environ["MAX_DB_LOADERS"])
+REPORT_PATH = Path("etl-report.jsonl")
 
-`DATABASE_URL` is read on your machine, and the value is captured into the pickled function when the job starts (see [Pass API keys & secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers)).
+if MAX_DB_LOADERS < 1:
+    raise ValueError("MAX_DB_LOADERS must be at least 1")
 
-### Step 1: List the files
-
-The client lists the daily prefix and builds one input per file.
-
-```python
+s3 = boto3.client("s3")
 keys = []
-for page in boto3.client("s3").get_paginator("list_objects_v2").paginate(Bucket=S3_BUCKET, Prefix=f"raw/{DATE}/"):
-    keys += [obj["Key"] for obj in page.get("Contents", []) if obj["Key"].endswith(".json.gz")]
+pages = s3.get_paginator("list_objects_v2").paginate(
+    Bucket=S3_BUCKET,
+    Prefix=f"raw/{RUN_DATE}/",
+)
+for page in pages:
+    keys.extend(
+        obj["Key"]
+        for obj in page.get("Contents", [])
+        if obj["Key"].endswith(".json.gz")
+    )
 
 print(f"Found {len(keys):,} files")
-```
 
-### Step 2: Transform and insert one file
 
-The worker owns extract, transform, and load for one object. `execute_values` keeps each file as a small number of batched inserts.
-
-```python
 def etl_one_file(key: str) -> dict:
-    body = boto3.client("s3").get_object(Bucket=S3_BUCKET, Key=key)["Body"].read()
-    rows_in = [json.loads(line) for line in gzip.decompress(body).splitlines() if line]
+    body = boto3.client("s3").get_object(
+        Bucket=S3_BUCKET,
+        Key=key,
+    )["Body"].read()
+    rows_in = [
+        json.loads(line)
+        for line in gzip.decompress(body).splitlines()
+        if line
+    ]
     rows_out = [
-        (r["event_id"], r["user_id"], r["event_type"], r["ts"], float(r.get("amount") or 0))
-        for r in rows_in
-        if r.get("event_type") in ("click", "purchase", "signup")
+        (
+            row["event_id"],
+            row["user_id"],
+            row["event_type"],
+            row["ts"],
+            float(row.get("amount") or 0),
+            (row.get("country") or "XX").upper(),
+        )
+        for row in rows_in
+        if row.get("event_type") in {"click", "purchase", "signup"}
     ]
 
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor() as cur:
-            execute_values(
-                cur,
-                """
-                INSERT INTO events (event_id, user_id, event_type, ts, amount)
-                VALUES %s
-                ON CONFLICT (event_id) DO NOTHING
-                """,
-                rows_out,
-                page_size=1000,
-            )
+    connection = psycopg2.connect(DATABASE_URL)
+    try:
+        with connection:
+            with connection.cursor() as cursor:
+                if rows_out:
+                    execute_values(
+                        cursor,
+                        """
+                        INSERT INTO events (
+                            event_id, user_id, event_type, ts, amount, country
+                        )
+                        VALUES %s
+                        ON CONFLICT (event_id) DO NOTHING
+                        """,
+                        rows_out,
+                        page_size=1_000,
+                    )
+    finally:
+        connection.close()
 
-    return {"key": key, "rows_in": len(rows_in), "rows_out": len(rows_out)}
-```
+    return {
+        "key": key,
+        "rows_in": len(rows_in),
+        "rows_out": len(rows_out),
+    }
 
-The insert is idempotent because `event_id` is the conflict key. That makes retries safe.
 
-### Step 3: Protect Postgres
-
-The database is the constraint, so `max_parallelism` is the important line.
-
-```python
-REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-done = 0
-
-with REPORT_PATH.open("w") as f:
+with REPORT_PATH.open("w") as report_file:
     for report in remote_parallel_map(
         etl_one_file,
         keys,
-        func_cpu=1,
-        func_ram=2,
         max_parallelism=MAX_DB_LOADERS,
         generator=True,
-        grow=True,
     ):
-        done += 1
-        f.write(json.dumps(report) + "\n")
-        if done % 100 == 0:
-            print(done, report["rows_out"])
+        report_file.write(json.dumps(report) + "\n")
 
 print(REPORT_PATH)
 ```
+
+`DATABASE_URL` is read by the local process. Because `etl_one_file` references that value, Burla sends it with the function. Burla does not copy local environment variables into worker environments. See [Pass API keys and secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers).
+
+The S3 reads and Postgres inserts happen on workers. `etl-report.jsonl` is written by the local process as calls finish, so it is on your machine. This script does not use `/workspace/shared`.
+
+## Run it
+
+```bash
+python main.py
+```
+
+Calls can finish in any order. The report follows completion order rather than S3 key order.
+
+`ON CONFLICT (event_id) DO NOTHING` makes a rerun safe when an event ID should be inserted only once. It does not update an existing event whose other fields changed.
+
+If a file raises an exception, Burla raises it in the local process. Inserts already committed by other calls remain in Postgres, and the idempotent statement lets you rerun the same date.
