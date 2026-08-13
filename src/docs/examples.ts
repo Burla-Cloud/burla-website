@@ -60,13 +60,6 @@ export const BASICS_CATEGORY: ExampleCategory = {
       icon: "gate",
     },
     {
-      route: "/docs/all-examples/basic-examples/choose-how-to-split-your-work",
-      title: "Decide how to split your work",
-      description:
-        "Choose what one input should be. Use existing boundaries, batches, or ranges.",
-      icon: "route",
-    },
-    {
       route: "/docs/all-examples/basic-examples/process-thousands-of-files-quickly",
       title: "Process thousands of files",
       description:
