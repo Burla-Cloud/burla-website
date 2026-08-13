@@ -1,115 +1,182 @@
 ---
+description: Stream NOAA's annual GHCN-Daily files in parallel and reduce them to the largest quality-controlled precipitation value.
 cover: /docs-assets/more-examples/ghcn-rainiest-day-cover.webp
 coverY: 0
 ---
 
-# Find the rainiest day by scanning every NOAA year file
+# Find NOAA's largest daily precipitation value
 
-In this example we:
+[GHCN-Daily](https://www.ncei.noaa.gov/products/land-based-station/global-historical-climatology-network-daily) combines daily observations from land stations around the world. NOAA publishes the data as one compressed CSV per year, so each remote call can scan one file independently and return only that year's maximum.
 
-* Scan every GHCN-Daily year file from 1750 through today.
-* Keep daily precipitation records with clean quality flags.
-* Reduce 3,177,336,585 rows into a global rain leaderboard.
+This example excludes the current, incomplete calendar year. NOAA updates the full period of record every day, so the result can still change when historical observations or quality flags are revised.
 
-The run found 1,750.0 mm at Koumac, New Caledonia on 1976-01-17.
+## Before you run
 
-### Dataset: NOAA GHCN-Daily by-year files
+Complete [Getting Started](/docs/get-started), then install the two Python dependencies:
 
-NOAA publishes one compressed CSV per year. That makes the input list obvious.
+```bash
+mkdir ghcn-rainiest-day
+cd ghcn-rainiest-day
+python -m venv .venv
+source .venv/bin/activate
+pip install burla requests
+```
+
+{% hint style="warning" %}
+The full scan downloads every selected historical file and uses paid cloud compute.
+{% endhint %}
+
+## The dataset
+
+The [by-year directory](https://www.ncei.noaa.gov/pub/data/ghcn/daily/by_year/) contains a gzip-compressed CSV for each available year. Its [format notes](https://www.ncei.noaa.gov/pub/data/ghcn/daily/by_year/readme-by_year.txt) define precipitation as `PRCP` in tenths of a millimeter and place the quality flag in the sixth column.
+
+Do not generate years with a continuous range. The archive contains `1750.csv.gz`, then resumes at 1763. The script reads the directory listing so it submits only files that exist.
+
+## Scan and reduce
+
+Save this complete script as `rainiest_day.py`:
 
 ```python
 import csv
 import gzip
-import heapq
 import io
 import json
+import re
 from datetime import date
 from pathlib import Path
 
 import requests
 from burla import remote_parallel_map
 
-BASE = "https://www.ncei.noaa.gov/pub/data/ghcn/daily/by_year"
-PART_DIR = Path("/workspace/shared/ghcn-rain/parts")
-FINAL_DIR = Path("/workspace/shared/ghcn-rain/final")
-TOP_PER_YEAR = 100
-START_YEAR = 1750
-END_YEAR = date.today().year
-```
+BASE_URL = "https://www.ncei.noaa.gov/pub/data/ghcn/daily"
+BY_YEAR_URL = f"{BASE_URL}/by_year"
+STATIONS_URL = f"{BASE_URL}/ghcnd-stations.txt"
+HEADERS = {"User-Agent": "burla-ghcn-example/1.0"}
 
-### Step 1: Stream one year per worker
 
-Each worker downloads one compressed year file and streams it row by row.
+def available_complete_years() -> list[int]:
+    response = requests.get(f"{BY_YEAR_URL}/", headers=HEADERS, timeout=60)
+    response.raise_for_status()
+    listed_years = {
+        int(year)
+        for year in re.findall(r'href="(\d{4})\.csv\.gz"', response.text)
+    }
+    return sorted(year for year in listed_years if year < date.today().year)
 
-```python
-def _stream_year_rows(year: int):
-    url = f"{BASE}/{year}.csv.gz"
-    with requests.get(url, stream=True, timeout=300, headers={"User-Agent": "ghcn-rainiest-day/1.0"}) as resp:
-        resp.raise_for_status()
-        with gzip.GzipFile(fileobj=resp.raw) as gz:
-            text = io.TextIOWrapper(gz, encoding="utf-8", errors="replace", newline="")
-            yield from csv.reader(text)
-```
 
-### Step 2: Keep a heap, not the whole file
-
-The worker filters precipitation rows, applies the unit conversion, and keeps only the top records for that year.
-
-```python
-def process_year(year: int) -> str:
-    heap = []
+def process_year(year: int) -> dict:
     rows_seen = 0
-    for row in _stream_year_rows(year):
-        rows_seen += 1
-        if len(row) < 4 or row[2] != "PRCP":
-            continue
-        if len(row) > 5 and row[5]:
-            continue
-        if not row[3] or row[3] == "-9999":
-            continue
-        prcp_mm = int(row[3]) / 10.0
-        item = (prcp_mm, row[0], row[1])
-        if len(heap) < TOP_PER_YEAR:
-            heapq.heappush(heap, item)
-        elif prcp_mm > heap[0][0]:
-            heapq.heapreplace(heap, item)
+    max_tenths_mm = None
+    max_records = []
 
-    PART_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = PART_DIR / f"{year}.json"
-    out_path.write_text(json.dumps({
+    with requests.get(
+        f"{BY_YEAR_URL}/{year}.csv.gz",
+        headers=HEADERS,
+        stream=True,
+        timeout=(30, 600),
+    ) as response:
+        response.raise_for_status()
+        with gzip.GzipFile(fileobj=response.raw) as compressed:
+            text = io.TextIOWrapper(
+                compressed,
+                encoding="utf-8",
+                errors="replace",
+                newline="",
+            )
+            for row in csv.reader(text):
+                rows_seen += 1
+                if len(row) < 7 or row[2] != "PRCP":
+                    continue
+                if row[5] or not row[3] or row[3] == "-9999":
+                    continue
+
+                value = int(row[3])
+                record = {
+                    "station_id": row[0],
+                    "date": row[1],
+                    "measurement_flag": row[4] or None,
+                    "source_flag": row[6] or None,
+                }
+                if max_tenths_mm is None or value > max_tenths_mm:
+                    max_tenths_mm = value
+                    max_records = [record]
+                elif value == max_tenths_mm:
+                    max_records.append(record)
+
+    return {
         "year": year,
         "rows_seen": rows_seen,
-        "top": sorted(heap, reverse=True),
-    }) + "\n")
-    return str(out_path)
+        "max_tenths_mm": max_tenths_mm,
+        "records": max_records,
+    }
+
+
+def load_stations(station_ids: set[str]) -> dict:
+    response = requests.get(STATIONS_URL, headers=HEADERS, timeout=60)
+    response.raise_for_status()
+
+    stations = {}
+    for line in response.text.splitlines():
+        station_id = line[:11]
+        if station_id in station_ids:
+            stations[station_id] = {
+                "name": line[41:71].strip(),
+                "latitude": float(line[12:20]),
+                "longitude": float(line[21:30]),
+            }
+    return stations
+
+
+years = available_complete_years()
+year_results = remote_parallel_map(
+    process_year,
+    years,
+    func_cpu=1,
+    func_ram=2,
+    grow=True,
+    max_parallelism=8,
+)
+
+global_max = max(
+    result["max_tenths_mm"]
+    for result in year_results
+    if result["max_tenths_mm"] is not None
+)
+records = [
+    record
+    for result in year_results
+    if result["max_tenths_mm"] == global_max
+    for record in result["records"]
+]
+stations = load_stations({record["station_id"] for record in records})
+
+output = {
+    "years_scanned": len(years),
+    "rows_scanned": sum(result["rows_seen"] for result in year_results),
+    "precipitation_mm": global_max / 10,
+    "records": [
+        {
+            **record,
+            "date": (
+                f"{record['date'][:4]}-{record['date'][4:6]}-"
+                f"{record['date'][6:]}"
+            ),
+            **stations.get(record["station_id"], {}),
+        }
+        for record in records
+    ],
+}
+
+Path("rainiest-days.json").write_text(json.dumps(output, indent=2) + "\n")
+print(json.dumps(output, indent=2))
 ```
 
-The worker never holds a full year in memory. It holds a 100-record heap.
+Run it:
 
-### Step 3: Reduce the years
-
-The reducer merges yearly heaps, joins station metadata, computes country-decade stats, and renders the map.
-
-```python
-def reduce_years(part_paths: list[str]) -> str:
-    heap = []
-    for part_path in part_paths:
-        part = json.loads(Path(part_path).read_text())
-        for item in part["top"]:
-            prcp_mm, station_id, date = item
-            if len(heap) < 500:
-                heapq.heappush(heap, (prcp_mm, station_id, date, part["year"]))
-            elif prcp_mm > heap[0][0]:
-                heapq.heapreplace(heap, (prcp_mm, station_id, date, part["year"]))
-
-    FINAL_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = FINAL_DIR / "rainiest-days.json"
-    out_path.write_text(json.dumps(sorted(heap, reverse=True), indent=2) + "\n")
-    return str(out_path)
-
-years = list(range(START_YEAR, END_YEAR + 1))
-part_paths = remote_parallel_map(process_year, years, func_cpu=1, func_ram=2, grow=True)
-[result_path] = remote_parallel_map(reduce_years, [part_paths], func_cpu=8, func_ram=32, grow=True)
-
-print(result_path)
+```bash
+python rainiest_day.py
 ```
+
+Each worker streams its CSV and retains only the tied maximum records for that year. `max_parallelism=8` limits the job to eight simultaneous downloads from NOAA. The final reduction happens locally over a few hundred small dictionaries.
+
+The output is the largest `PRCP` value with a blank NOAA quality flag. It is a database result, not an independently validated rainfall record; the measurement and source flags are retained for that review.

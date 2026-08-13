@@ -1,91 +1,168 @@
 ---
+description: Query real Sentinel-2 COGs, compute NDVI for each tile in parallel, and keep the GeoTIFFs in shared storage.
 cover: /docs-assets/more-examples/gdal-raster-processing-cover.webp
 coverY: 0
 ---
 
-# Process every raster tile, not a pretty subset
+# Compute NDVI for Sentinel-2 tiles in parallel
 
-In this example we:
+This example queries four real Sentinel-2 Level-2A tiles, then gives each tile to a separate remote call. Every call reads the red and near-infrared Cloud-Optimized GeoTIFFs, computes NDVI, and writes one compressed GeoTIFF.
 
-* Process 2,000 Sentinel-2 tiles.
-* Read red and near-infrared bands from S3.
-* Compute NDVI and write per-tile GeoTIFF outputs.
-* Return a report with per-tile stats.
+The input comes from the public [Sentinel-2 C1 L2A collection](https://registry.opendata.aws/sentinel-2-l2a-cogs/) through the [Earth Search STAC API](https://earth-search.aws.element84.com/v1/collections/sentinel-2-c1-l2a).
 
-The first tile usually works. The full region is where missing bands, bad nodata values, CRS surprises, and requester-pays mistakes show up.
+## Before you run
 
-### Dataset: Sentinel-2 tile ids
+Complete [Getting Started](/docs/get-started), then install the dependencies:
 
-The input is a plain list of tile ids. Each worker owns one tile.
+```bash
+mkdir sentinel-ndvi
+cd sentinel-ndvi
+python -m venv .venv
+source .venv/bin/activate
+pip install burla numpy rasterio requests
+burla deploy
+```
+
+A deployed cluster is required for `/workspace/shared`, where the GeoTIFFs persist after their workers stop. The public source COGs are read over HTTPS and need no AWS credentials.
+
+{% hint style="warning" %}
+The deployed cluster and raster workers use paid cloud resources.
+{% endhint %}
+
+## Query the tiles
+
+The fixed query covers New York City during June 2025 and requests up to four tiles with less than 20 percent scene-level cloud cover. Each STAC item supplies exact URLs for its 10-meter B04 red and B08 near-infrared assets.
+
+## Process one tile per call
+
+Save this complete script as `sentinel_ndvi.py`:
 
 ```python
-import io
+import json
+import shutil
+import tempfile
 from pathlib import Path
 
-import boto3
 import numpy as np
-import pandas as pd
 import rasterio
+import requests
 from burla import remote_parallel_map
-from rasterio.io import MemoryFile
 
-SRC_BUCKET = "sentinel-s2-l2a"
-DST_BUCKET = "my-ndvi-outputs"
-REPORT_PATH = Path("/workspace/shared/ndvi/ndvi_report.csv")
-```
+STAC_SEARCH_URL = "https://earth-search.aws.element84.com/v1/search"
+OUTPUT_DIR = Path("/workspace/shared/sentinel-ndvi")
 
-### Step 1: Make one task per tile
 
-```python
-with open("sentinel_tiles.txt") as f:
-    tile_ids = [line.strip() for line in f if line.strip()]
+def find_tiles() -> list[dict]:
+    response = requests.post(
+        STAC_SEARCH_URL,
+        json={
+            "collections": ["sentinel-2-c1-l2a"],
+            "bbox": [-74.1, 40.6, -73.8, 40.9],
+            "datetime": (
+                "2025-06-01T00:00:00Z/"
+                "2025-06-30T23:59:59Z"
+            ),
+            "limit": 4,
+            "query": {"eo:cloud_cover": {"lt": 20}},
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
 
-print(f"Loaded {len(tile_ids):,} Sentinel tile ids")
-```
+    tiles = [
+        {
+            "scene_id": feature["id"],
+            "cloud_cover": feature["properties"]["eo:cloud_cover"],
+            "red_url": feature["assets"]["red"]["href"],
+            "nir_url": feature["assets"]["nir"]["href"],
+        }
+        for feature in response.json()["features"]
+    ]
+    if not tiles:
+        raise RuntimeError("The STAC query returned no tiles.")
+    return tiles
 
-### Step 2: Compute NDVI in the worker
 
-The worker reads both bands, computes NDVI, writes a compressed GeoTIFF, and returns summary stats.
+def compute_ndvi(tile: dict) -> dict:
+    with rasterio.open(tile["red_url"]) as red_source:
+        red = red_source.read(1).astype("float32")
+        red_valid = red_source.read_masks(1) > 0
+        profile = red_source.profile.copy()
+        red_grid = (
+            red_source.shape,
+            red_source.transform,
+            red_source.crs,
+        )
 
-```python
-def compute_ndvi(tile_id: str) -> dict:
-    s3 = boto3.client("s3", region_name="eu-central-1")
+    with rasterio.open(tile["nir_url"]) as nir_source:
+        nir = nir_source.read(1).astype("float32")
+        nir_valid = nir_source.read_masks(1) > 0
+        nir_grid = (
+            nir_source.shape,
+            nir_source.transform,
+            nir_source.crs,
+        )
 
-    def read_band(band: str):
-        key = f"tiles/{tile_id}/{band}.jp2"
-        body = s3.get_object(Bucket=SRC_BUCKET, Key=key, RequestPayer="requester")["Body"].read()
-        with MemoryFile(body) as mem, mem.open() as src:
-            return src.read(1).astype("float32"), src.profile
+    if red_grid != nir_grid:
+        raise ValueError(f"Band grids differ for {tile['scene_id']}")
 
-    red, profile = read_band("B04")
-    nir, _ = read_band("B08")
-    ndvi = (nir - red) / (nir + red + 1e-6)
-    profile.update(driver="GTiff", dtype="float32", count=1, compress="DEFLATE", tiled=True)
+    denominator = nir + red
+    valid = red_valid & nir_valid & (denominator != 0)
+    if not np.any(valid):
+        raise ValueError(f"No valid pixels for {tile['scene_id']}")
 
-    with MemoryFile() as mem:
-        with mem.open(**profile) as dst:
-            dst.write(ndvi.astype("float32"), 1)
-        out_key = f"ndvi/{tile_id}.tif"
-        s3.put_object(Bucket=DST_BUCKET, Key=out_key, Body=mem.read())
+    ndvi = np.full(red.shape, np.nan, dtype="float32")
+    np.divide(nir - red, denominator, out=ndvi, where=valid)
+
+    profile.update(
+        driver="GTiff",
+        dtype="float32",
+        count=1,
+        nodata=np.nan,
+        compress="DEFLATE",
+        predictor=3,
+        tiled=True,
+    )
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    shared_path = OUTPUT_DIR / f"{tile['scene_id']}-ndvi.tif"
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        local_path = Path(temp_dir) / shared_path.name
+        with rasterio.open(local_path, "w", **profile) as output:
+            output.write(ndvi, 1)
+        shutil.copyfile(local_path, shared_path)
 
     return {
-        "tile_id": tile_id,
+        "scene_id": tile["scene_id"],
+        "cloud_cover": tile["cloud_cover"],
+        "valid_pixels": int(np.count_nonzero(valid)),
         "mean_ndvi": float(np.nanmean(ndvi)),
         "min_ndvi": float(np.nanmin(ndvi)),
         "max_ndvi": float(np.nanmax(ndvi)),
-        "pixels": int(ndvi.size),
-        "output": f"s3://{DST_BUCKET}/{out_key}",
+        "output": str(shared_path),
     }
+
+
+tiles = find_tiles()
+reports = remote_parallel_map(
+    compute_ndvi,
+    tiles,
+    func_cpu=2,
+    func_ram=8,
+    grow=True,
+)
+
+Path("ndvi-report.json").write_text(json.dumps(reports, indent=2) + "\n")
+print(f"Wrote {len(reports)} rasters to {OUTPUT_DIR}")
 ```
 
-### Step 3: Run the tiles
+Run it:
 
-Each tile gets two CPUs and enough RAM for the bands.
-
-```python
-results = remote_parallel_map(compute_ndvi, tile_ids, func_cpu=2, func_ram=8, grow=True)
-
-REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-pd.DataFrame(results).to_csv(REPORT_PATH, index=False)
-print(REPORT_PATH)
+```bash
+python sentinel_ndvi.py
 ```
+
+Each worker writes its GeoTIFF to local temporary storage first, then copies the closed file to shared storage. The raster outputs appear under `/workspace/shared/sentinel-ndvi`; `ndvi-report.json` is written on your local machine.
+
+Change the bounding box, date range, cloud threshold, or limit to build a different input list. The processing function does not depend on how those STAC items were selected.
