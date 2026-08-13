@@ -204,7 +204,7 @@ export const WORKLOADS = {
       metricLabel: "arXiv abstracts clustered by topic",
       domain: "ML",
       title: "Cluster 2.7M arXiv abstracts",
-      desc: "Embed the full corpus and trace research topics through time.",
+      desc: "Embed a fixed snapshot in parallel, cluster it by topic, and find its semantic outlier.",
       href: "/docs/featured-examples/arxiv-fossils",
     },
     {

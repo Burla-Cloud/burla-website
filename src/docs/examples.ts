@@ -93,7 +93,7 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         route: "/docs/featured-examples/arxiv-fossils",
         title: "Cluster 2.7M arXiv abstracts",
         description:
-          "Embed every arXiv abstract and cluster the whole corpus. Use FAISS to find topics that went extinct.",
+          "Embed a 2.7M-paper snapshot in parallel, cluster it by topic, and find its semantic outlier.",
         icon: "spiral",
       },
       {

@@ -87,6 +87,10 @@ const REGISTRY = {
     "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing",
 };
 
+// These routes are maintained directly in this repository. Keep their source
+// entries in REGISTRY so imported pages still rewrite links to the right route.
+const SITE_OWNED_ROUTES = new Set(["/docs/featured-examples/arxiv-fossils"]);
+
 const WEBP_THRESHOLD = 300 * 1024; // png larger than this -> webp
 const MP4_THRESHOLD = 1024 * 1024; // gif larger than this -> mp4
 
@@ -203,18 +207,27 @@ function transformMarkdown(fileRel, raw) {
 
 // ---------------------------------------------------------------------------
 
+const siteOwnedContent = new Map(
+  [...SITE_OWNED_ROUTES].map((route) => {
+    const destRel = `${route.replace(/^\/docs\//, "")}.md`;
+    const destAbs = path.join(CONTENT_OUT, destRel);
+    return [route, fs.readFileSync(destAbs, "utf8")];
+  }),
+);
+
 fs.rmSync(CONTENT_OUT, { recursive: true, force: true });
 fs.rmSync(ASSETS_OUT, { recursive: true, force: true });
 
 for (const [srcRel, route] of Object.entries(REGISTRY)) {
   const srcAbs = path.join(DOCS_ROOT, srcRel);
-  const raw = fs.readFileSync(srcAbs, "utf8");
-  const transformed = transformMarkdown(srcRel, raw);
+  const transformed =
+    siteOwnedContent.get(route) ?? transformMarkdown(srcRel, fs.readFileSync(srcAbs, "utf8"));
   const destRel = `${route.replace(/^\/docs\//, "")}.md`;
   const destAbs = path.join(CONTENT_OUT, destRel);
   fs.mkdirSync(path.dirname(destAbs), { recursive: true });
   fs.writeFileSync(destAbs, transformed);
-  console.log(`page  ${srcRel} -> src/docs/content/${destRel}`);
+  const source = siteOwnedContent.has(route) ? "site" : srcRel;
+  console.log(`page  ${source} -> src/docs/content/${destRel}`);
 }
 
 let converted = 0;
