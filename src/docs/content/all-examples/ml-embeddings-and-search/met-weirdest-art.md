@@ -1,162 +1,240 @@
 ---
 cover: /docs-assets/more-examples/met-weirdest-art-cover.webp
 coverY: 0
+description: Embed 191,922 Met artwork images with CLIP, then use FAISS to surface visual matches separated by centuries.
 ---
 
-# Let CLIP compare every Met image
+# Find cross-century matches in 191,922 Met images
 
-In this example we:
+This pipeline joins two community mirrors of The Met's Open Access data, fetches the available `web-large` images, and embeds each image with [`Qdrant/clip-ViT-B-32-vision`](https://huggingface.co/Qdrant/clip-ViT-B-32-vision). A final worker builds a FAISS index and ranks visually similar pairs separated by long spans of time.
 
-* Fetch every Met Open Access artwork with a usable image.
-* Embed about 192,000 images with CLIP.
-* Use FAISS to find visual twins across time, culture, and department.
+The published run finished in about 50 minutes on April 19, 2026. You can [browse its 30 highest-ranked pairs](https://burla-cloud.github.io/examples/met-weirdest-art/) or [read the complete script](https://github.com/Burla-Cloud/examples/blob/main/met-weirdest-art/met_weirdest.py).
 
-The question is deliberately weird: which artworks look alike even though the metadata says they should not?
+## Before you run
 
-### Dataset: Met Open Access images
+Complete [Getting Started](/docs/get-started), then download the example and install its dependencies:
 
-Discovery joins Met object metadata to CRDImages paths. After that, workers can fetch deterministic CDN URLs instead of hammering the API.
-
-```python
-import json
-import random
-from pathlib import Path
-
-import numpy as np
-import pandas as pd
-from burla import remote_parallel_map
-from sentence_transformers import SentenceTransformer
-
-CRD_IMAGE_BASE = "https://images.metmuseum.org/CRDImages/"
-OBJECTS_PATH = Path("/workspace/shared/met-weirdest/objects.parquet")
-VEC_DIR = Path("/workspace/shared/met-weirdest/vectors")
-FINAL_DIR = Path("/workspace/shared/met-weirdest/final")
-HTTP_THREADS = 16
-CLIP_BATCH = 64
-BATCH_SIZE = 512
-MODEL_NAME = "clip-ViT-B-32"
+```bash
+git clone https://github.com/Burla-Cloud/examples.git
+cd examples/met-weirdest-art
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install burla numpy pandas pyarrow fastembed Pillow requests scikit-learn faiss-cpu
+burla deploy
 ```
 
-### Step 1: Build the image queue
+Deployment is required here. The pipeline passes files between separate remote calls through `/workspace/shared`, and current client-hosted Burla clusters do not mount shared storage by default.
 
-The client loads object metadata, keeps rows with an image path, shuffles them, and builds batches.
+The checked-in [`requirements.txt`](https://github.com/Burla-Cloud/examples/blob/main/met-weirdest-art/requirements.txt) pins the Burla 1.4.5 client used for the published run. The command above installs the current Burla release instead of downgrading the client.
 
-```python
-df = pd.read_parquet(OBJECTS_PATH)
-df = df.dropna(subset=["crd_urlpath"])
+Use Python 3.12 for both the local driver and worker containers. The map stage reserves 1 CPU and 4 GB of RAM per call, with at most 8 calls running at once. The reducer needs one worker with 16 CPUs and 64 GB of RAM.
 
-ids = df["object_id"].tolist()
-random.Random(42).shuffle(ids)
-batches = [
-    {"batch_id": i // BATCH_SIZE, "object_ids": ids[i:i + BATCH_SIZE]}
-    for i in range(0, len(ids), BATCH_SIZE)
-]
+The script does not grow the cluster automatically. Start enough capacity in the dashboard before running it.
 
-print(f"Built {len(batches):,} image batches")
+## The pipeline
+
+The work moves through three remote stages:
+
+```text
+Met metadata and image-path mirrors
+  -> objects.parquet
+  -> 428 CLIP vector shards
+  -> FAISS neighbors, summary.json, and two HTML reports
 ```
 
-### Step 2: Fetch and embed
+All artifacts live under `/workspace/shared/met-weirdest`. The local process receives path strings, not the files at those paths.
 
-Each worker fetches images with a thread pool, thumbnails them, embeds with CLIP, and writes a vector shard.
+The snippets below show the stage boundaries. The complete script also contains download validation, HTTP retries, rerun checks, metadata filters, and HTML rendering.
+
+### 1. Join metadata to image paths
+
+The discovery worker downloads [`BetterMetObjects.csv`](https://github.com/graslowsnail/metmuseum-api-dump-enhanced) and the [`met-openaccess-images.csv`](https://github.com/gregsadetsky/met-openaccess-images) object-to-image mapping. It joins them by object ID, replaces original-image paths with smaller `web-large` paths, and writes the result to shared storage.
 
 ```python
-import io
-from concurrent.futures import ThreadPoolExecutor, as_completed
+def discover_objects(params: dict) -> list[list[int]]:
+    meta_df = pd.read_csv(
+        io.BytesIO(_download(MET_META_URL)),
+        low_memory=False,
+    )
+    keep = [column for column in KEEP_COLS if column in meta_df.columns]
+    meta_df = meta_df[keep].copy()
+    meta_df["object_id"] = pd.to_numeric(
+        meta_df["object_id"],
+        errors="coerce",
+    )
+    meta_df = meta_df.dropna(subset=["object_id"])
+    meta_df["object_id"] = meta_df["object_id"].astype("int64")
+    meta_df = meta_df.drop_duplicates(subset=["object_id"])
 
-import requests
-from PIL import Image
+    crd_df = pd.read_csv(
+        io.BytesIO(_download(MET_CRD_URL)),
+        on_bad_lines="skip",
+    )
+    crd_df = crd_df.rename(
+        columns={"id": "object_id", "urlpath": "crd_urlpath"}
+    )
+    crd_df["object_id"] = pd.to_numeric(
+        crd_df["object_id"],
+        errors="coerce",
+    )
+    crd_df = crd_df.dropna(subset=["object_id", "crd_urlpath"])
+    crd_df["object_id"] = crd_df["object_id"].astype("int64")
+    crd_df = crd_df.drop_duplicates(subset=["object_id"], keep="first")
+    crd_df["crd_urlpath"] = crd_df["crd_urlpath"].str.replace(
+        "/original/",
+        "/web-large/",
+        regex=False,
+    )
 
-def fetch_and_embed(job: dict) -> dict:
-    batch_id = job["batch_id"]
-    batch = job["object_ids"]
-    objs = pd.read_parquet(OBJECTS_PATH).set_index("object_id", drop=False)
-    rows = objs.reindex(batch).dropna(subset=["crd_urlpath"]).reset_index(drop=True)
+    objects = meta_df.merge(crd_df, on="object_id", how="inner")
+    objects.to_parquet(OBJECTS_PATH, index=False)
 
-    session = requests.Session()
-    work = [(int(oid), CRD_IMAGE_BASE + str(path)) for oid, path in zip(rows["object_id"], rows["crd_urlpath"])]
-
-    def fetch(item):
-        object_id, url = item
-        resp = session.get(url, timeout=30)
-        resp.raise_for_status()
-        image = Image.open(io.BytesIO(resp.content)).convert("RGB")
-        image.thumbnail((512, 512))
-        return object_id, image
-
-    with ThreadPoolExecutor(max_workers=HTTP_THREADS) as ex:
-        images = dict(f.result() for f in as_completed([ex.submit(fetch, item) for item in work]))
-
-    if not hasattr(fetch_and_embed, "_model"):
-        fetch_and_embed._model = SentenceTransformer(MODEL_NAME)
-
-    ordered_ids = [int(oid) for oid in rows["object_id"] if int(oid) in images]
-    vecs = fetch_and_embed._model.encode(
-        [images[oid] for oid in ordered_ids],
-        batch_size=CLIP_BATCH,
-        convert_to_numpy=True,
-    ).astype("float32")
-    vecs = vecs / np.maximum(np.linalg.norm(vecs, axis=1, keepdims=True), 1e-12)
-
-    VEC_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = VEC_DIR / f"batch-{batch_id:05d}.npz"
-    np.savez_compressed(out_path, object_ids=np.asarray(ordered_ids, dtype="int64"), vectors=vecs)
-    return {"batch_id": batch_id, "objects": len(ordered_ids), "path": str(out_path)}
+    ids = objects["object_id"].tolist()
+    random.Random(42).shuffle(ids)
+    batch_size = int(params["batch_size"])
+    return [
+        ids[start : start + batch_size]
+        for start in range(0, len(ids), batch_size)
+    ]
 ```
 
-### Step 3: Run the image batches
+Run discovery on one worker because `/workspace/shared` is not mounted in the local Python process:
 
 ```python
-vec_reports = remote_parallel_map(
+[batches] = remote_parallel_map(
+    discover_objects,
+    [{"cap": 0, "batch_size": 500}],
+    func_cpu=8,
+    func_ram=32,
+)
+```
+
+The join defines the candidate set. The final count is lower because some CDN paths fail, return non-images, or fall outside the script's 1 KB to 16 MB size limits.
+
+### 2. Fetch and embed each batch
+
+Each map call reads up to 500 object IDs from `objects.parquet`, fetches images with 16 HTTP threads by default, resizes them to fit within 384 by 384 pixels, and embeds them in batches of 16. The model is loaded once per worker process and reused if that process receives another input.
+
+```python
+_CLIP_MODEL = None
+
+def _get_clip():
+    global _CLIP_MODEL
+    if _CLIP_MODEL is None:
+        from fastembed import ImageEmbedding
+
+        _CLIP_MODEL = ImageEmbedding(model_name=CLIP_MODEL, threads=1)
+    return _CLIP_MODEL
+
+# Inside fetch_and_embed, after the images have been decoded:
+model = _get_clip()
+vectors = np.asarray(
+    list(model.embed(images, batch_size=CLIP_BATCH)),
+    dtype="float32",
+)
+norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+vectors /= np.where(norms < 1e-12, 1.0, norms)
+
+out_table = pa.table({
+    "object_id": rec_ids,
+    "vector": pa.array(
+        vectors.tolist(),
+        type=pa.list_(pa.float32(), CLIP_DIM),
+    ),
+})
+pq.write_table(out_table, out_path)
+```
+
+This excerpt omits the HTTP loop and the metadata columns copied into each shard. The complete function returns `str(out_path)`.
+
+Run the batches with a fixed concurrency cap:
+
+```python
+vector_paths = remote_parallel_map(
     fetch_and_embed,
     batches,
-    func_cpu=4,
-    func_ram=16,
-    grow=True,
+    func_cpu=1,
+    func_ram=4,
+    max_parallelism=8,
 )
 ```
 
-### Step 4: Search the museum
+The fetcher retries `403`, `429`, `503`, and `504` responses with exponential backoff. Each successful call writes one Parquet shard and returns its shared path.
 
-The reducer loads vector shards, builds a FAISS cosine index, and filters out boring matches.
+### 3. Build the index and rank candidates
+
+The reducer loads all vector shards into one normalized matrix. For 191,922 vectors, it trains a FAISS IVF inner-product index on a reproducible sample and searches the 11 nearest entries for each image.
 
 ```python
-def find_visual_neighbors(vec_reports: list[dict]) -> str:
-    import faiss
+nlist = max(32, int(np.sqrt(len(vectors))))
+quantizer = faiss.IndexFlatIP(CLIP_DIM)
+index = faiss.IndexIVFFlat(
+    quantizer,
+    CLIP_DIM,
+    nlist,
+    faiss.METRIC_INNER_PRODUCT,
+)
 
-    object_ids = []
-    matrices = []
-    for report in vec_reports:
-        shard = np.load(report["path"])
-        object_ids.extend(shard["object_ids"].tolist())
-        matrices.append(shard["vectors"])
+rng = np.random.RandomState(31)
+train_indices = rng.choice(
+    len(vectors),
+    size=min(len(vectors), 200_000),
+    replace=False,
+)
+index.train(vectors[train_indices])
+index.add(vectors)
+index.nprobe = 32
 
-    vecs = np.vstack(matrices).astype("float32")
-    index = faiss.IndexFlatIP(vecs.shape[1])
-    index.add(vecs)
-    scores, neighbors = index.search(vecs, 20)
-
-    FINAL_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = FINAL_DIR / "visual-neighbors.json"
-    out_path.write_text(json.dumps({
-        str(object_ids[i]): [
-            {"object_id": int(object_ids[j]), "score": float(score)}
-            for j, score in zip(neighbors[i][1:], scores[i][1:])
-        ]
-        for i in range(len(object_ids))
-    }) + "\n")
-    return str(out_path)
+similarities, neighbors = index.search(vectors, 11)
 ```
 
+Because the vectors are normalized, inner product equals cosine similarity. The reducer uses the tenth other-image neighbor to rank visual outliers. It also rejects same-artist pairs, identical titles, and near-exact duplicate images before ranking candidate pairs by century gap and similarity.
+
+Run the reducer on one larger worker:
+
 ```python
-[neighbor_path] = remote_parallel_map(
-    find_visual_neighbors,
-    [vec_reports],
+[results_dir] = remote_parallel_map(
+    reduce_met,
+    [vector_paths],
     func_cpu=16,
-    func_ram=128,
-    grow=True,
+    func_ram=64,
 )
 
-print(neighbor_path)
+print(results_dir)
 ```
 
-The filter matters. Raw nearest neighbors mostly find same-period, same-object-type matches. The fun pairs are the ones that cross boundaries.
+`results_dir` is a path inside the deployed cluster. Open the shared filesystem in the dashboard to download `summary.json`, `twins.html`, or `weirdest.html`.
+
+## Run it
+
+Run the complete pipeline:
+
+```bash
+python met_weirdest.py
+```
+
+Existing discovery and vector files are reused on reruns. To rebuild only the FAISS index and reports:
+
+```bash
+REDUCE_ONLY=1 python met_weirdest.py
+```
+
+## Result from the published run
+
+| Metric | Value |
+|---|---:|
+| Images embedded | 191,922 |
+| Vector shards | 428 |
+| Candidate pairs reported | 30 |
+| Map concurrency cap | 8 |
+| Full pipeline | about 50 minutes |
+| Final reduction | 49.65 seconds |
+| Burla client | 1.4.5 |
+
+The highest-ranked pair was [a 19th-century knife and fork case](https://www.metmuseum.org/art/collection/search/186597) and [an Early Bronze Age dagger blade](https://www.metmuseum.org/art/collection/search/244170). Their CLIP cosine similarity was `0.9316`, and the script placed them 49 centuries apart.
+
+## Interpreting the result
+
+- The 191,922 images are the records that survived the two-source join and image fetches. They are not every object or every Open Access image in The Met.
+- CLIP measures visual similarity, not artistic influence or historical relationship. The Met's consistent backgrounds and camera angles contribute to the matches.
+- The FAISS IVF search is approximate, and the pair filters are heuristics. The script does not query Met relationship records, so “hidden twin” means a candidate surfaced by this pipeline, not a curator-validated discovery.
