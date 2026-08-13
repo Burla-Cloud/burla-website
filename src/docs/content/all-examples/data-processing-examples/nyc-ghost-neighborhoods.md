@@ -1,132 +1,178 @@
 ---
+description: Count pickups in 371 monthly taxi files, reduce 2.76 billion trips into zone histories, and rank the largest changes.
 cover: /docs-assets/more-examples/nyc-ghost-neighborhoods-cover.webp
 coverY: 0
 ---
 
-# Scan every NYC taxi month
+# Find changes in NYC pickup activity across 2.76 billion trips
 
-In this example we:
+This example processes 371 monthly Parquet files from the [NYC TaxiData mirror](https://huggingface.co/datasets/DinoPonjevic/NYC_TaxiData_RAW). The files cover yellow taxis from 2011 through 2024, green taxis from 2014 through 2024, and high-volume for-hire vehicles from February 2019 through 2024.
 
-* Download every public TLC monthly Parquet file from 2011 through 2024.
-* Count pickups for yellow, green, FHV, and HVFHS trips.
-* Build a zone-by-month matrix across all 264 taxi zones.
-* Classify zones by the shape of their own time series.
+Each remote call reduces one file to pickup counts by taxi zone. The local process combines those compact results into 168 monthly totals for 264 zones, then ranks zones by changes in their own histories.
 
-I wanted to find ghost neighborhoods, but only after including the ride-share data. Otherwise you are mostly measuring the limits of yellow cab coverage.
+A run completed the 371-call map in 14.48 seconds and aggregated 2,758,715,765 trips with a valid pickup zone. You can [browse the generated report](https://burla-cloud.github.io/examples/nyc-ghost-neighborhoods/).
 
-### Dataset: NYC TLC monthly trip files
+## Before you run
 
-The public files are already split by taxi type, year, and month. That is the work queue.
+Complete [Getting Started](/docs/get-started). This workflow does not use `/workspace/shared`: workers return compact counts directly, and the report is written on your local machine. A deployed cluster is not required.
 
-```python
-import io
-from dataclasses import dataclass
+The current `main` copy of the example has an import regression: `process_month` calls `_requests.get` after that alias was removed. Download the [complete script before that regression](https://github.com/Burla-Cloud/examples/blob/fde0fde0e5/nyc-ghost-neighborhoods/nyc_ghost_neighborhoods.py), then install the dependencies it uses:
 
-import pandas as pd
-import pyarrow.parquet as pq
-import requests
-from burla import remote_parallel_map
-
-BASE = "https://d37ci6vzurychx.cloudfront.net/trip-data"
-TAXI_TYPES = ["yellow", "green", "fhv", "fhvhv"]
-YEARS = range(2011, 2025)
-
-@dataclass(frozen=True)
-class MonthJob:
-    taxi_type: str
-    year: int
-    month: int
-
-def monthly_url(taxi_type: str, year: int, month: int) -> str:
-    return f"{BASE}/{taxi_type}_tripdata_{year}-{month:02d}.parquet"
+```bash
+mkdir nyc-ghost-neighborhoods
+cd nyc-ghost-neighborhoods
+curl -L \
+  https://raw.githubusercontent.com/Burla-Cloud/examples/fde0fde0e5/nyc-ghost-neighborhoods/nyc_ghost_neighborhoods.py \
+  -o nyc_ghost_neighborhoods.py
+python -m venv .venv
+source .venv/bin/activate
+pip install burla numpy pyarrow requests fsspec pyshp
 ```
 
-### Step 1: Make one task per month file
+The script does not pass `grow=True`, so it uses the capacity already available in your cluster. Start the machines you want from the dashboard before running it. The measured 14.48-second result is not a runtime guarantee.
 
-The client builds one input per possible file. Missing files are handled inside the worker, because not every taxi type exists for the full time range.
+## The pipeline
+
+```text
+371 monthly Parquet files
+  -> 371 remote pickup-count dictionaries
+  -> local zone-by-month matrix
+  -> local HTML and JSON report
+```
+
+The snippets below are abridged excerpts from the pinned complete script.
+
+### 1. Build one input per file
+
+The source defines only the periods that exist in the mirror:
 
 ```python
-jobs = [
-    MonthJob(taxi_type, year, month)
-    for taxi_type in TAXI_TYPES
-    for year in YEARS
-    for month in range(1, 13)
+TAXI_TYPES = [
+    ("yellow", 201101, 202412, ("tpep_pickup_datetime", "pickup_datetime")),
+    ("green", 201401, 202412, ("lpep_pickup_datetime", "pickup_datetime")),
+    ("fhvhv", 201902, 202412, ("pickup_datetime",)),
 ]
 
-print(f"Built {len(jobs):,} month-file jobs")
+def build_task_list():
+    tasks = []
+    for prefix, first, last, _ in TAXI_TYPES:
+        tasks.extend(_list_months_for_type(prefix, first, last))
+    return tasks
 ```
 
-### Step 2: Count pickups for one file
+A task is a string such as `yellow_tripdata_2023-01`, which is enough to derive the mirror URL and expected month.
 
-Each worker downloads one Parquet file and returns pickup counts by zone. It does not send raw trips back to the client.
+### 2. Count one file on each worker
+
+The worker downloads one Parquet file into memory, reads only its pickup-zone and timestamp columns, and counts valid zones in batches:
 
 ```python
-def process_month(job: MonthJob) -> dict:
-    url = monthly_url(job.taxi_type, job.year, job.month)
-    response = requests.get(url, timeout=300)
-    if response.status_code == 404:
-        return {"taxi_type": job.taxi_type, "year": job.year, "month": job.month, "missing": True, "counts": {}}
+def process_month(task_id):
+    import requests as _requests
+
+    prefix = task_id.split("_", 1)[0]
+    year_month = task_id.rsplit("_", 1)[-1]
+    year, month = map(int, year_month.split("-"))
+
+    response = _requests.get(
+        _hf_url_for_task(task_id),
+        timeout=300,
+        allow_redirects=True,
+    )
     response.raise_for_status()
 
-    table = pq.read_table(io.BytesIO(response.content))
-    pickup_col = "PULocationID"
-    if pickup_col not in table.column_names:
-        return {"taxi_type": job.taxi_type, "year": job.year, "month": job.month, "missing_column": True, "counts": {}}
+    parquet = pq.ParquetFile(pa.BufferReader(response.content))
+    counts = defaultdict(int)
 
-    counts = table.column(pickup_col).to_pandas().value_counts().to_dict()
+    for batch in parquet.iter_batches(
+        batch_size=500_000,
+        columns=[zone_col, pickup_time_col],
+    ):
+        # Keep rows whose timestamp belongs to the file's stated month.
+        # Count each valid pickup-zone ID with numpy.unique.
+
     return {
-        "taxi_type": job.taxi_type,
-        "year": job.year,
-        "month": job.month,
-        "rows": table.num_rows,
-        "counts": {int(k): int(v) for k, v in counts.items() if pd.notna(k)},
+        "taxi_type": prefix,
+        "year": year,
+        "month": month,
+        "rows_with_zone": rows_with_zone,
+        "counts": sorted([[zone, count] for zone, count in counts.items()]),
     }
 ```
 
-The missing-file behavior matters. A public corpus this old will have schema and availability edges.
+The complete worker handles more historical column names, filters rows whose timestamps fall outside the file's stated month, and returns a skip reason for 404 responses, exhausted download retries, or missing zone columns.
 
-### Step 3: Scan the full corpus
+### 3. Map the archive
 
 ```python
-month_results = remote_parallel_map(
-    process_month,
-    jobs,
-    func_cpu=1,
-    func_ram=4,
-    grow=True,
+results = list(
+    remote_parallel_map(
+        process_month,
+        build_task_list(),
+        func_cpu=1,
+        func_ram=4,
+    )
 )
 ```
 
-### Step 4: Build the time series
+`remote_parallel_map` does not promise result order. The reducer uses the `year` and `month` in each dictionary, so completion order does not affect the matrix.
 
-The client reduces the monthly counts into a zone-by-month matrix and classifies the shape of each zone.
+No Parquet data is written to the client or shared storage. One count comes back for each distinct valid pickup-zone ID in the file.
+
+### 4. Classify the local time series
+
+For each zone, the script compares the mean of its last 12 months with its largest single month and with the 24-month window beginning at its first nonzero month:
 
 ```python
-def build_zone_month_matrix(month_results: list[dict]) -> pd.DataFrame:
-    rows = []
-    for result in month_results:
-        for zone_id, pickups in result.get("counts", {}).items():
-            rows.append({
-                "zone_id": zone_id,
-                "taxi_type": result["taxi_type"],
-                "month": f"{result['year']}-{result['month']:02d}",
-                "pickups": pickups,
-            })
-    return pd.DataFrame(rows)
+ghost_ratio = recent_mean / peak_volume
+emergent_ratio = recent_mean / birth_mean
 
-matrix = build_zone_month_matrix(month_results)
-zone_month = matrix.groupby(["zone_id", "month"], as_index=False)["pickups"].sum()
-zone_month.to_parquet("/workspace/shared/nyc-taxi/zone_month_pickups.parquet", index=False)
-
-early = zone_month[zone_month["month"] < "2016-01"].groupby("zone_id")["pickups"].mean()
-late = zone_month[zone_month["month"] >= "2022-01"].groupby("zone_id")["pickups"].mean()
-classified = (
-    pd.DataFrame({"early_avg": early, "late_avg": late})
-    .fillna(0)
-    .assign(change_ratio=lambda df: (df["late_avg"] + 1) / (df["early_avg"] + 1))
-    .sort_values("change_ratio")
-)
-classified.to_csv("/workspace/shared/nyc-taxi/zone_classification.csv")
+if peak_volume >= 5_000 and ghost_ratio < 0.35:
+    label = "ghost"
+elif recent_mean >= 500 and emergent_ratio >= 4 and birth_mean < 1_000:
+    label = "emergent"
+elif peak_volume >= 5_000 and ghost_ratio < 0.7:
+    label = "cooling"
+elif recent_mean >= 500 and emergent_ratio >= 1.5:
+    label = "warming"
+else:
+    label = "stable"
 ```
 
-The classification happens after the scan, when every feed and every month is visible.
+The report also builds separate leaderboards. Its "Ghost Zones" leaderboard shows the 12 lowest recent-to-peak ratios, even when a zone does not meet the `< 0.35` classifier threshold. This is why the recorded classification contains two `ghost` zones while the leaderboard contains 12 entries.
+
+## Run it
+
+Set the report path explicitly because the pinned script's default points to the original author's machine:
+
+```bash
+NYC_OUT_DIR="$PWD/nyc_ghost_out" python nyc_ghost_neighborhoods.py
+python -m http.server 8765 --directory nyc_ghost_out
+```
+
+The generated `summary.json` contains the rankings and exact run metadata. `index.html` contains the map, time series, and leaderboards.
+
+## Result from the recorded run
+
+| Metric | Value |
+|---|---:|
+| Trips with a valid pickup zone | 2,758,715,765 |
+| Monthly files | 371 |
+| Calendar months | 168 |
+| Taxi zones | 264 |
+| Map stage | 14.48 seconds |
+
+Three rows show how to read the rankings:
+
+| Ranking | Zone | Recorded values |
+|---|---|---:|
+| Lowest recent-to-peak | Battery Park | 11,483 peak; 3,694.1 recent mean (32%) |
+| Largest recent-to-birth | Far Rockaway | 43.9 birth mean; 42,053.8 recent mean (about 958x) |
+| Recovered from a trough | JFK Airport | 13,689 in April 2020; 526,788.8 recent mean |
+
+## Interpreting the result
+
+- The source coverage changes over time. High-volume FHV data begins in 2019, so an "emergent" zone can reflect a new feed or a shift from taxis to ride-share rather than a neighborhood being born.
+- The pipeline includes yellow, green, and high-volume FHV records. It does not include the ordinary FHV feed.
+- Activity means pickups only. A trip ending in a zone does not count toward that zone.
+- "Recent" means the final 12 months of this fixed dataset, ending in December 2024. The report is not a live view of New York.
