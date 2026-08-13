@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/ml-inference-batch-cover.webp
-coverY: 0
 description: Classify 45,615 TweetEval posts across remote CPU workers and stream the predictions into one local JSONL file.
 ---
 

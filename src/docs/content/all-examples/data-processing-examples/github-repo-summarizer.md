@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/github-repo-summarizer-cover.webp
-coverY: 0
 description: Classify 1.2 million public GitHub READMEs with deterministic rules, then reduce the shard outputs into a static explorer.
 ---
 

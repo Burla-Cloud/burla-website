@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/parallel-web-scraping-cover.webp
-coverY: 0
 description: Scrape authorized static pages in parallel across hosts while pacing each host sequentially.
 ---
 

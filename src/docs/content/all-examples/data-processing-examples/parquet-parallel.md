@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/parquet-parallel-cover.webp
-coverY: 0
 description: Read every Parquet object in an S3 prefix on a separate remote call, then combine compact file statistics locally.
 ---
 

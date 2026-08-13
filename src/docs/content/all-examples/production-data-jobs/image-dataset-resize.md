@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/image-dataset-resize-cover.webp
-coverY: 0
 description: Resize S3 images in parallel and stream a local manifest of every result.
 ---
 

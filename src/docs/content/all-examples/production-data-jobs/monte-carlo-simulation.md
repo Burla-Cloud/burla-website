@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/monte-carlo-simulation-cover.webp
-coverY: 0
 description: Distribute independent option-price paths and reduce compact statistics into one estimate.
 ---
 

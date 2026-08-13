@@ -1,7 +1,5 @@
 ---
 description: Query real Sentinel-2 COGs, compute NDVI for each tile in parallel, and keep the GeoTIFFs in shared storage.
-cover: /docs-assets/more-examples/gdal-raster-processing-cover.webp
-coverY: 0
 ---
 
 # Compute NDVI for Sentinel-2 tiles in parallel

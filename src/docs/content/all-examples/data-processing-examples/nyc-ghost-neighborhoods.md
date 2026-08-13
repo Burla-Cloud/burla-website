@@ -1,7 +1,5 @@
 ---
 description: Count pickups in 371 monthly taxi files, reduce 2.76 billion trips into zone histories, and rank the largest changes.
-cover: /docs-assets/more-examples/nyc-ghost-neighborhoods-cover.webp
-coverY: 0
 ---
 
 # Find changes in NYC pickup activity across 2.76 billion trips
@@ -90,6 +88,7 @@ def process_month(task_id):
     ):
         # Keep rows whose timestamp belongs to the file's stated month.
         # Count each valid pickup-zone ID with numpy.unique.
+        ...
 
     return {
         "taxi_type": prefix,

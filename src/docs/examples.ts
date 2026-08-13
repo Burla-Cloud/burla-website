@@ -98,16 +98,16 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/featured-examples/airbnb-burla",
-        title: "CLIP-score 1.7M Airbnb photos",
+        title: "Process 1.7M Airbnb photo rows",
         description:
-          "Rank listings across 119 cities by where the TV is. Validate each shortlist with a vision model.",
+          "Process 1.7M photo rows and 50.7M reviews through staged CLIP, embedding, and Haiku filters.",
         icon: "image",
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo",
-        title: "Embed 50K Wikipedia articles",
+        title: "Build Wikipedia search on A100s",
         description:
-          "Generate Wikipedia embeddings across A100 workers. Build a searchable index when the job completes.",
+          "Embed Wikipedia text on up to eight A100s, store vector shards in shared storage, and search them locally.",
         icon: "embed",
       },
       {
@@ -119,16 +119,16 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/ml-inference-batch",
-        title: "Run batch LLM inference",
+        title: "Run batch sentiment inference",
         description:
-          "Run offline model inference as a distributed job. Avoid maintaining an endpoint for batch work.",
+          "Classify 45,615 posts across CPU workers and stream predictions back to the client.",
         icon: "net",
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/met-weirdest-art",
         title: "Search 192K artworks with CLIP",
         description:
-          "Embed every available Met artwork with CLIP. Search the collection by visual meaning.",
+          "Embed 191,922 Met images and surface cross-century visual matches with FAISS.",
         icon: "star",
       },
     ],
@@ -147,44 +147,44 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/featured-examples/amazon-review-distiller",
-        title: "Rank 572M Amazon reviews",
+        title: "Rank 571.5M Amazon reviews",
         description:
-          "Stream 275GB of review JSONL as byte-range chunks. Score every review to surface the strangest ones.",
+          "Stream 275GB across 545 byte-range jobs, then reduce bounded candidates into one ranked report.",
         icon: "star",
       },
       {
         route: "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods",
         title: "Scan 2.76B NYC taxi trips",
         description:
-          "Scan every monthly taxi dataset in parallel. Find neighborhoods whose activity disappeared.",
+          "Count pickups across 371 monthly files and reduce 2.76B trips into zone histories.",
         icon: "city",
       },
       {
         route: "/docs/all-examples/data-processing-examples/world-photo-index",
         title: "Map geotagged Flickr photos",
         description:
-          "Index a global archive of geotagged photos. Turn billions of coordinates into a browsable map.",
+          "Reverse-geocode 4,094 Flickr metadata shards and aggregate tags into a browsable geographic index.",
         icon: "pin",
       },
       {
         route: "/docs/all-examples/data-processing-examples/github-repo-summarizer",
-        title: "Summarize 1M GitHub READMEs",
+        title: "Summarize 1.2M GitHub READMEs",
         description:
-          "Score a million README files with inspectable rules. Produce useful category summaries without an LLM.",
+          "Classify 1.2M READMEs with deterministic rules, then reduce them into an inspectable report.",
         icon: "code",
       },
       {
         route: "/docs/all-examples/data-processing-examples/parquet-parallel",
-        title: "Audit 5,000 Parquet files",
+        title: "Audit an S3 Parquet prefix",
         description:
-          "Inspect every Parquet shard in parallel. Combine schema and quality findings into one report.",
+          "Run one PyArrow check per S3 object and combine compact file statistics into a local CSV.",
         icon: "scan",
       },
       {
         route: "/docs/all-examples/data-processing-examples/pandas-apply-parallel",
         title: "Parallelize pandas apply",
         description:
-          "Keep a familiar pandas transformation. Distribute it across a dataset that no longer fits one machine.",
+          "Run a familiar pandas transformation on worker-sized Parquet slices, then combine results locally.",
         icon: "table",
       },
     ],
@@ -196,44 +196,44 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
     examples: [
       {
         route: "/docs/all-examples/production-data-jobs/python-etl-no-airflow",
-        title: "ETL 10K S3 files to Postgres",
+        title: "ETL S3 files to Postgres",
         description:
-          "Transform a large file drop into database rows. Run the workflow without adopting an orchestrator.",
+          "Transform gzipped S3 objects while capping concurrent Postgres connections.",
         icon: "etl",
       },
       {
         route: "/docs/all-examples/production-data-jobs/image-dataset-resize",
         title: "Resize an image corpus",
         description:
-          "Resize an entire image dataset in parallel. Write training-ready outputs back to shared storage.",
+          "Resize S3 images into three JPEG variants and record every result in a local manifest.",
         icon: "image",
       },
       {
         route: "/docs/all-examples/production-data-jobs/rate-limited-api-requests",
-        title: "Run a 2M-user API backfill",
+        title: "Run a rate-limited API backfill",
         description:
-          "Backfill millions of records through a rate-limited API. Bound concurrency without giving up parallelism.",
+          "Backfill records with bounded concurrency, local pacing, and explicit retry outcomes.",
         icon: "gate",
       },
       {
         route: "/docs/all-examples/production-data-jobs/parallel-web-scraping",
-        title: "Scrape 1M web pages",
+        title: "Scrape web pages in parallel",
         description:
-          "Fetch a million pages across many workers. Retry failures and preserve incremental results.",
+          "Scrape authorized static pages in parallel while pacing requests to each origin.",
         icon: "globe",
       },
       {
         route: "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
-        title: "Run 1B option simulations",
+        title: "Run parallel option simulations",
         description:
-          "Distribute a billion independent market simulations. Reduce the outcomes into one risk estimate.",
+          "Reduce distributed option-price paths into a reproducible estimate with a standard error.",
         icon: "dice",
       },
     ],
   },
   {
     label: "Scientific & Geospatial Computing",
-    description: "Bioinformatics, climate, and raster workloads at full-dataset scale.",
+    description: "Bioinformatics, climate, and raster workloads with native tools.",
     legacyRoute: "/docs/all-examples/scientific-and-geospatial-work",
     examples: [
       {
@@ -247,21 +247,21 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         route: "/docs/all-examples/scientific-and-geospatial-work/bioinformatics-alignment",
         title: "Align every FASTQ sample",
         description:
-          "Align sequencing samples in parallel with native tools. Keep each sample isolated and reproducible.",
+          "Align paired-end FASTQ samples in parallel and save indexed BAMs to shared storage.",
         icon: "reads",
       },
       {
         route: "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",
-        title: "Find NOAA's rainiest day",
+        title: "Find NOAA's largest daily precipitation value",
         description:
-          "Scan every NOAA annual weather file. Reduce decades of station readings to the wettest day.",
+          "Scan GHCN-Daily year files in parallel and reduce quality-controlled precipitation values.",
         icon: "raindrop",
       },
       {
         route: "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing",
-        title: "NDVI for 2K Sentinel tiles",
+        title: "Compute NDVI for Sentinel-2 tiles",
         description:
-          "Process Sentinel raster tiles with GDAL in parallel. Produce an NDVI output for every scene.",
+          "Compute NDVI from public Sentinel-2 COGs in parallel and save GeoTIFFs.",
         icon: "raster",
       },
     ],

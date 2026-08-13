@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/pandas-apply-parallel-cover.webp
-coverY: 0
 description: Split a partitioned Parquet dataset into worker-sized slices and run an ordinary row-wise pandas transformation on each slice.
 ---
 

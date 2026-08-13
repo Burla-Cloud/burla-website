@@ -1,7 +1,5 @@
 ---
 description: Align paired-end FASTQ samples in parallel with BWA-MEM and samtools, then keep the indexed BAMs in shared storage.
-cover: /docs-assets/more-examples/bioinformatics-alignment-cover.webp
-coverY: 0
 ---
 
 # Align paired-end FASTQ samples in parallel

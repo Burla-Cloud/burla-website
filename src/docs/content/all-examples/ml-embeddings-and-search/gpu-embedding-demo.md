@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/gpu-embedding-demo-cover.webp
-coverY: 0
 description: Embed Wikipedia text on up to eight A100s, store vector shards in shared storage, and search them from the client.
 ---
 

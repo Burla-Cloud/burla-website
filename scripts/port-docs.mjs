@@ -89,7 +89,31 @@ const REGISTRY = {
 
 // These routes are maintained directly in this repository. Keep their source
 // entries in REGISTRY so imported pages still rewrite links to the right route.
-const SITE_OWNED_ROUTES = new Set(["/docs/featured-examples/arxiv-fossils"]);
+const SITE_OWNED_ROUTES = new Set([
+  "/docs/featured-examples/airbnb-burla",
+  "/docs/featured-examples/amazon-review-distiller",
+  "/docs/featured-examples/arxiv-fossils",
+  "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo",
+  "/docs/all-examples/ml-embeddings-and-search/ml-inference-batch",
+  "/docs/all-examples/ml-embeddings-and-search/met-weirdest-art",
+  "/docs/all-examples/data-processing-examples/nyc-ghost-neighborhoods",
+  "/docs/all-examples/data-processing-examples/world-photo-index",
+  "/docs/all-examples/data-processing-examples/github-repo-summarizer",
+  "/docs/all-examples/data-processing-examples/parquet-parallel",
+  "/docs/all-examples/data-processing-examples/pandas-apply-parallel",
+  "/docs/all-examples/production-data-jobs/python-etl-no-airflow",
+  "/docs/all-examples/production-data-jobs/image-dataset-resize",
+  "/docs/all-examples/production-data-jobs/rate-limited-api-requests",
+  "/docs/all-examples/production-data-jobs/parallel-web-scraping",
+  "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
+  "/docs/all-examples/scientific-and-geospatial-work/bioinformatics-alignment",
+  "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",
+  "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing",
+]);
+
+const SITE_OWNED_CARD_SLUGS = new Set(
+  [...SITE_OWNED_ROUTES].map((route) => route.split("/").at(-1)),
+);
 
 const WEBP_THRESHOLD = 300 * 1024; // png larger than this -> webp
 const MP4_THRESHOLD = 1024 * 1024; // gif larger than this -> mp4
@@ -110,6 +134,9 @@ const assetPlan = new Map();
 
 function planAsset(srcRel) {
   const clean = decodeURIComponent(srcRel).replace(/^\/+/, "");
+  // The React examples index renders generated marks, not GitBook card art.
+  const card = path.basename(clean).match(/^(.*)-card\.[^.]+$/);
+  if (card && SITE_OWNED_CARD_SLUGS.has(card[1])) return null;
   if (assetPlan.has(clean)) return assetPlan.get(clean).publicPath;
   const abs = path.join(DOCS_ROOT, clean);
   if (!fs.existsSync(abs)) {

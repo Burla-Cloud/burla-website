@@ -1,7 +1,5 @@
 ---
 description: Stream NOAA's annual GHCN-Daily files in parallel and reduce them to the largest quality-controlled precipitation value.
-cover: /docs-assets/more-examples/ghcn-rainiest-day-cover.webp
-coverY: 0
 ---
 
 # Find NOAA's largest daily precipitation value

@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/python-etl-no-airflow-cover.webp
-coverY: 0
 description: Transform a gzipped JSONL file drop in parallel while capping Postgres connections.
 ---
 

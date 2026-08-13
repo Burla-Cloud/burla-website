@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/rate-limited-api-requests-cover.webp
-coverY: 0
 description: Backfill an HTTP API with bounded concurrency, local pacing, and retryable error handling.
 ---
 

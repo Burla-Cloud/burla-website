@@ -1,10 +1,8 @@
 ---
-cover: /docs-assets/more-examples/airbnb-burla-cover.webp
-coverY: 0
 description: Process 1.7 million Inside Airbnb photo rows and 50.7 million reviews through staged CLIP, embedding, and Haiku filters.
 ---
 
-# Analyze 1.7 million Airbnb listing photos
+# Analyze 1.7 million Airbnb photo rows
 
 This pipeline turns public [Inside Airbnb](https://insideairbnb.com/get-the-data/) exports into photo galleries and statistical findings. The published run covers 119 cities, 282 city-snapshot pairs, 1.74 million latest listings, 1.71 million photo-score rows, and 50.69 million reviews.
 

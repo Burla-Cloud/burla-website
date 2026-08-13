@@ -1,7 +1,5 @@
 ---
 description: Reverse-geocode 4,094 Flickr metadata shards, aggregate user-written tags by country, and reduce them into a browsable index.
-cover: /docs-assets/more-examples/world-photo-index-cover.webp
-coverY: 0
 ---
 
 # Build a geographic index of 9.5 million Flickr photos

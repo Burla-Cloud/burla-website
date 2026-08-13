@@ -1,6 +1,4 @@
 ---
-cover: /docs-assets/more-examples/met-weirdest-art-cover.webp
-coverY: 0
 description: Embed 191,922 Met artwork images with CLIP, then use FAISS to surface visual matches separated by centuries.
 ---
 

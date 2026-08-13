@@ -1,10 +1,8 @@
 ---
 description: Stream 275 GB of review JSONL as byte ranges, keep bounded candidates on each worker, and reduce them into one ranked report.
-cover: /docs-assets/more-examples/amazon-review-distiller-cover.webp
-coverY: 0
 ---
 
-# Rank 571 million Amazon reviews with byte-range map-reduce
+# Rank 571.5 million Amazon reviews with byte-range map-reduce
 
 This example scans the 34 raw JSONL files in [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023). It divides the 275 GB corpus into 545 byte ranges, scores each range in a separate remote call, and keeps only bounded candidate sets for the final ranking.
 
