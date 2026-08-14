@@ -48,13 +48,12 @@ function ExampleCard({
   );
 }
 
-function CoverHeader({ title, description }: { title: string; description: string }) {
+function CoverHeader({ title }: { title: string }) {
   return (
     <header className="max-w-[680px]">
       <h1 className="font-display text-[clamp(34px,3.4vw,42px)] font-semibold leading-[1.08] tracking-[-0.03em] text-ink">
         {title}
       </h1>
-      <p className="mt-4 text-[16px] leading-relaxed text-inkDim">{description}</p>
     </header>
   );
 }
@@ -76,9 +75,6 @@ function ExampleCategory({ category }: { category: ExampleCategoryData }) {
         >
           {category.label}
         </h2>
-        <p className="mt-1.5 text-[14px] leading-relaxed text-inkDim">
-          {category.description}
-        </p>
       </div>
 
       <div className={CARD_GRID_CLASSES}>
@@ -145,10 +141,7 @@ function ExampleCategory({ category }: { category: ExampleCategoryData }) {
 export function ExamplesCover() {
   return (
     <div className="pb-12">
-      <CoverHeader
-        title="Examples"
-        description="Complete Burla workloads, organized by the kind of problem they solve."
-      />
+      <CoverHeader title="Examples" />
 
       <div className="mt-12 space-y-12">
         {ALL_EXAMPLE_CATEGORIES.map((category) => (
