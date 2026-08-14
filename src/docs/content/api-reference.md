@@ -18,7 +18,7 @@ remote_parallel_map(
   func_ram="dynamic",
   func_gpu=None,
   image=None,
-  grow=True,
+  grow=False,
   max_parallelism=None,
   detach=False,
   generator=False,
@@ -50,7 +50,7 @@ Optionally, it can return a generator that yields results as they become availab
 <tr><td><code>func_ram</code></td><td><p><code>int</code> or <code>"dynamic"</code></p><p>(Optional) RAM in GB allocated to each function call. Defaults to <code>"dynamic"</code>: Burla lowers parallelism when workers run out of memory. Pass an integer to reserve a fixed amount instead.</p></td></tr>
 <tr><td><code>func_gpu</code></td><td><p><code>str</code></p><p>(Optional) Allocates one GPU per function call. Use <code>"A100"</code> / <code>"A100_40G"</code>, <code>"A100_80G"</code>, or <code>"H100"</code> / <code>"H100_80G"</code>. Defaults to <code>None</code>.</p></td></tr>
 <tr><td><code>image</code></td><td><p><code>str</code></p><p>(Optional) Limits the job to nodes running this container image. With <code>grow=True</code>, Burla boots matching nodes when needed. If omitted, new nodes use the stock <code>python:X.Y</code> image matching your local Python version.</p></td></tr>
-<tr><td><code>grow</code></td><td><p><code>bool</code></p><p>(Optional) Adds nodes to complete the job as quickly as possible. Defaults to <code>True</code>.</p></td></tr>
+<tr><td><code>grow</code></td><td><p><code>bool</code></p><p>(Optional) Adds nodes to complete the job as quickly as possible. Defaults to <code>False</code>.</p></td></tr>
 <tr><td><code>max_parallelism</code></td><td><p><code>int</code></p><p>(Optional) Maximum number of function calls that can run at once. Defaults to the number of inputs.</p></td></tr>
 <tr><td><code>detach</code></td><td><p><code>bool</code></p><p>(Optional) Keeps the job running if the local process stops. Requires a deployed cluster. Defaults to <code>False</code>.</p></td></tr>
 <tr><td><code>generator</code></td><td><p><code>bool</code></p><p>(Optional) Returns a generator that yields results as they arrive. Defaults to <code>False</code>.</p></td></tr>
