@@ -1,127 +1,112 @@
 ---
 cover: /docs-assets/more-examples/terabyte-etl-cover.webp
 coverY: 0
+description: Backfill non-overlapping ID ranges while capping database connections.
 ---
 
-# Process database rows without building a queue
+# Backfill database rows without a queue
 
-In this example we:
+Split an indexed PostgreSQL table into ID ranges and process those ranges in parallel. This example extracts the hostname from each customer's website and writes it back to the table.
 
-* Split an indexed PostgreSQL table into non-overlapping ID ranges.
-* Run one worker per range.
-* Return small aggregate reports instead of raw rows.
-* Use `max_parallelism` so the database remains the constraint, not the cluster.
+## Before you run this
 
-This is the pattern I would use for a backfill where the source of truth is still the database. The goal is not to replace SQL. The goal is to run ordinary Python over many row ranges without turning one script into a queueing system.
+1. Complete [Getting Started](/docs/get-started).
+2. Make PostgreSQL reachable from the Burla workers.
+3. Use a `customers` table with an indexed integer `id`, a `website` column, and a nullable `website_host` column.
 
-### Dataset: an `orders` table
+Install the PostgreSQL driver and set the connection string on your machine:
 
-Assume the table has an indexed integer `id` column and a `status`, `amount`, and `updated_at` column.
+```bash
+pip install "psycopg[binary]"
+export DATABASE_URL="<postgres-connection-string>"
+```
 
-The workers need a database URL they can reach from the Burla cluster. Do not use `localhost` unless the database is actually inside the worker.
+## Step 1: Build ID ranges
+
+Read the bounds remotely so only the workers need network access to PostgreSQL:
 
 ```python
 import os
-from dataclasses import dataclass
+from urllib.parse import urlsplit
 
-import psycopg2
+import psycopg
 from burla import remote_parallel_map
 
 DATABASE_URL = os.environ["DATABASE_URL"]
-ROWS_PER_RANGE = 25_000
+IDS_PER_CALL = 10_000
 MAX_DB_CONNECTIONS = 20
-```
 
-`DATABASE_URL` is read on your machine, and the value is captured into the pickled function when the job starts (see [Pass API keys & secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers)).
+def get_id_bounds(_):
+    with psycopg.connect(DATABASE_URL) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT min(id), max(id)
+                FROM customers
+                WHERE website IS NOT NULL AND website_host IS NULL
+                """
+            )
+            return cursor.fetchone()
 
-### Step 1: Build ID ranges
+first_id, last_id = remote_parallel_map(get_id_bounds, [None])[0]
+if first_id is None:
+    raise SystemExit("No rows need this backfill")
 
-First ask the database for the range you intend to scan. Then split that range into jobs.
-
-```python
-@dataclass(frozen=True)
-class IdRange:
-    start_id: int
-    end_id: int
-
-def get_id_bounds() -> tuple[int, int]:
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT min(id), max(id) FROM orders WHERE updated_at >= current_date - interval '1 day'")
-            return cur.fetchone()
-
-def build_id_ranges(start_id: int, end_id: int, rows_per_range: int) -> list[IdRange]:
-    return [
-        IdRange(start, min(start + rows_per_range - 1, end_id))
-        for start in range(start_id, end_id + 1, rows_per_range)
-    ]
-
-start_id, end_id = get_id_bounds()
-id_ranges = build_id_ranges(start_id, end_id, ROWS_PER_RANGE)
-
+id_ranges = [
+    (start, min(start + IDS_PER_CALL, last_id + 1))
+    for start in range(first_id, last_id + 1, IDS_PER_CALL)
+]
 print(f"Built {len(id_ranges):,} ID ranges")
 ```
 
-ID ranges are easy to reason about because they do not overlap. They also make reruns obvious: rerun the failed ranges.
+## Step 2: Backfill one range
 
-### Step 2: Process one range
-
-Each worker opens its own database connection, runs one bounded query, and returns a small aggregate.
+Each call reads and updates one half-open range: `start_id <= id < end_id`.
 
 ```python
-def summarize_order_range(id_range: IdRange) -> dict:
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
+def backfill_website_hosts(start_id, end_id):
+    with psycopg.connect(DATABASE_URL) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
                 """
-                SELECT
-                    count(*) AS row_count,
-                    count(*) FILTER (WHERE status = 'paid') AS paid_count,
-                    coalesce(sum(amount) FILTER (WHERE status = 'paid'), 0) AS paid_amount
-                FROM orders
-                WHERE id BETWEEN %s AND %s
+                SELECT id, website
+                FROM customers
+                WHERE id >= %s AND id < %s
+                  AND website IS NOT NULL
+                  AND website_host IS NULL
                 """,
-                (id_range.start_id, id_range.end_id),
+                (start_id, end_id),
             )
-            row_count, paid_count, paid_amount = cur.fetchone()
+            updates = []
+            for customer_id, website in cursor:
+                value = website if "://" in website else f"https://{website}"
+                hostname = urlsplit(value).hostname
+                if hostname:
+                    updates.append((hostname.lower(), customer_id))
 
-    return {
-        "start_id": id_range.start_id,
-        "end_id": id_range.end_id,
-        "row_count": int(row_count),
-        "paid_count": int(paid_count),
-        "paid_amount": float(paid_amount),
-    }
+            cursor.executemany(
+                """
+                UPDATE customers
+                SET website_host = %s
+                WHERE id = %s AND website_host IS NULL
+                """,
+                updates,
+            )
+            return len(updates)
 ```
 
-If the worker needs to update rows, make the write idempotent. For read-only analytics, keep it read-only.
+## Step 3: Run the backfill
 
-### Step 3: Run the full range list
-
-`max_parallelism` is the important line. It is the number of live workers allowed to hit the database at once.
+Set `MAX_DB_CONNECTIONS` to the number of connections the database can spare. Each call opens one connection, so `max_parallelism` keeps the job at or below that limit:
 
 ```python
-range_results = remote_parallel_map(
-    summarize_order_range,
+updated_counts = remote_parallel_map(
+    backfill_website_hosts,
     id_ranges,
-    func_cpu=1,
-    func_ram=2,
     max_parallelism=MAX_DB_CONNECTIONS,
     grow=True,
 )
+print(f"Updated {sum(updated_counts):,} customers")
 ```
 
-### Step 4: Reduce the results
-
-The client combines the small per-range reports.
-
-```python
-summary = {
-    "ranges": len(range_results),
-    "rows": sum(row["row_count"] for row in range_results),
-    "paid_orders": sum(row["paid_count"] for row in range_results),
-    "paid_amount": sum(row["paid_amount"] for row in range_results),
-}
-
-print(summary)
-```
+The `website_host IS NULL` condition makes reruns skip completed rows. `DATABASE_URL` is read on your machine and sent with the function; Burla does not copy worker environment variables. See [Pass API keys and secrets to workers](/docs/all-examples/basic-examples/pass-api-keys-and-secrets-to-workers).

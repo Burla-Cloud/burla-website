@@ -63,21 +63,21 @@ export const BASICS_CATEGORY: ExampleCategory = {
       route: "/docs/all-examples/basic-examples/process-thousands-of-files-quickly",
       title: "Process thousands of files",
       description:
-        "Process one file per worker at massive scale. Combine compact reports afterward.",
+        "Run one remote function call per shared file, then combine the results locally.",
       icon: "parquet",
     },
     {
       route: "/docs/all-examples/basic-examples/process-one-giant-file-quickly",
       title: "Process one giant file",
       description:
-        "Stream a giant file in parallel chunks. Merge each chunk's result.",
+        "Read non-overlapping byte ranges of one JSONL file in parallel.",
       icon: "spiral",
     },
     {
       route: "/docs/all-examples/basic-examples/process-data-in-your-database-quickly",
-      title: "Process database rows",
+      title: "Backfill database rows",
       description:
-        "Process database rows across many workers. Avoid building a custom queue.",
+        "Backfill non-overlapping ID ranges while capping database connections.",
       icon: "database",
     },
   ],
