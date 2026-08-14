@@ -1,221 +1,275 @@
----
-description: Stream 275 GB of review JSONL as byte ranges, keep bounded candidates on each worker, and reduce them into one ranked report.
----
+# Rank 571 million Amazon reviews with byte-range map-reduce
 
-# Rank 571.5 million Amazon reviews with byte-range map-reduce
+In this example we:
 
-This example scans the 34 raw JSONL files in [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023). It divides the 275 GB corpus into 545 byte ranges, scores each range in a separate remote call, and keeps only bounded candidate sets for the final ranking.
+* Discover 275 GB of newline-delimited Amazon review files.
+* Divide the files into 545 newline-aligned byte ranges.
+* Score every range in parallel while retaining only its top 100 reviews.
+* Reduce the shared candidate shards into one global top 100.
 
-The recorded main pass parsed 571,544,386 reviews in 3.21 minutes and reduced its shard files in 9.2 seconds, with more than 500 calls running at peak. You can [browse the report](https://burla-cloud.github.io/examples/amazon-review-distiller/) or [read the complete source](https://github.com/Burla-Cloud/examples/tree/main/amazon-review-distiller).
+The archived run parsed 571,544,386 records from [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023), with more than 500 calls running at peak. The example below focuses on one deterministic strong-language ranking.
 
 {% hint style="warning" %}
-The report contains uncensored review text, profanity, and slurs.
+The output contains uncensored review text and profanity.
 {% endhint %}
 
 ## Before you run
 
-Complete [Getting Started](/docs/get-started), then deploy the cluster if you have not already:
-
-```bash
-burla deploy
-```
-
-This workflow requires a deployed cluster because separate remote calls exchange files through `/workspace/shared`. The current source writes main-pass shards under `/workspace/shared/ard/shards` and second-pass shards under `/workspace/shared/ard_worst/shards`. A dashboard running only on your laptop does not mount this shared filesystem.
-
-Download the example and install its dependencies:
+Complete [Getting Started](/docs/get-started), then download the scoring lexicon and install the dependencies:
 
 ```bash
 git clone https://github.com/Burla-Cloud/examples.git
 cd examples/amazon-review-distiller
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
-pip install burla -r requirements.txt
+pip install burla huggingface-hub requests
+burla deploy
 ```
 
-Each scoring call reserves 1 CPU and 4 GB of RAM. Each pass streams the source corpus once, so running both current passes reads the 275 GB corpus twice and uses paid cloud compute.
+Each map call reserves 1 CPU and 4 GB of RAM. The candidate files move between the map and reduce calls through `/workspace/shared/amazon-review-ranking`.
 
-## The pipeline
+{% hint style="warning" %}
+The full run streams 275 GB and uses paid cloud compute.
+{% endhint %}
 
-The code runs two map-reduce passes:
+## Build the script
 
-```text
-34 category JSONL files
-  -> 545 byte-range jobs
-  -> bounded candidate files in shared storage
-  -> one reduced result per pass on the local machine
-  -> static report data
-```
+Create `rank_reviews.py` beside the repository's `lexicon.py`. Each section below adds one step.
 
-The snippets below are excerpts from `pipeline.py`. The complete source contains the scoring lexicons, error summaries, command-line interface, and report builder.
+### 1. Configure the input and output
 
-### 1. Plan the byte ranges
-
-`plan_chunks` reads each category file's size from Hugging Face and creates ranges of roughly 500 MB:
+Use the strong and medium word lists from the checked-in lexicon:
 
 ```python
-def plan_chunks(chunk_mb: int = 500):
-    infos = HfApi().list_repo_tree(
-        "McAuley-Lab/Amazon-Reviews-2023",
-        path_in_repo="raw/review_categories",
-        repo_type="dataset",
-        recursive=False,
-    )
-    files = sorted(
-        [(info.path, info.size) for info in infos if getattr(info, "size", 0) > 0],
-        key=lambda item: -item[1],
-    )
+import heapq
+import json
+import math
+from pathlib import Path
 
+import requests
+from burla import remote_parallel_map
+from huggingface_hub import HfApi
+from lexicon import MEDIUM_PROFANE, STRONG_PROFANE, WORD_RX
+
+REPO_ID = "McAuley-Lab/Amazon-Reviews-2023"
+DATASET_ROOT = f"https://huggingface.co/datasets/{REPO_ID}/resolve/main/"
+SHARED_DIR = Path("/workspace/shared/amazon-review-ranking")
+
+RANGE_SIZE = 500 * 1024 * 1024
+TOP_K = 100
+```
+
+### 2. List the source files
+
+Read each category file's size from Hugging Face:
+
+```python
+def list_source_files():
+    entries = HfApi().list_repo_tree(
+        REPO_ID, path_in_repo="raw/review_categories", repo_type="dataset", recursive=False
+    )
+    return sorted(
+        ((entry.path, entry.size) for entry in entries
+         if getattr(entry, "size", 0) > 0 and entry.path.endswith(".jsonl")),
+        key=lambda item: item[0],
+    )
+```
+
+The recorded dataset listing contained 34 category files.
+
+### 3. Align each range boundary
+
+A raw byte offset can land in the middle of a JSON record. Move each interior boundary to the byte after its next newline:
+
+```python
+def align_boundary(file_path, position, file_size):
+    while position < file_size:
+        stop = min(position + 64 * 1024 - 1, file_size - 1)
+        response = requests.get(
+            DATASET_ROOT + file_path, headers={"Range": f"bytes={position}-{stop}"}, timeout=60
+        )
+        if response.status_code != 206:
+            raise RuntimeError(f"Range request returned {response.status_code}")
+
+        newline = response.content.find(b"\n")
+        if newline >= 0:
+            return position + newline + 1
+        position = stop + 1
+
+    return file_size
+```
+
+Adjacent jobs now meet at a record boundary. No job needs to discard a partial first or last record.
+
+### 4. Plan the byte ranges
+
+Create roughly 500 MB jobs from those aligned boundaries:
+
+```python
+def plan_ranges(files):
     jobs = []
-    chunk_bytes = chunk_mb * 1024 * 1024
-    for path, size in files:
-        n_chunks = max(1, math.ceil(size / chunk_bytes))
-        span = size // n_chunks
-        category = path.rsplit("/", 1)[-1].replace(".jsonl", "")
-        for index in range(n_chunks):
-            start = index * span
-            end = (index + 1) * span if index < n_chunks - 1 else size
-            jobs.append((path, start, end, f"{category}_{index:03d}"))
+
+    for file_path, file_size in files:
+        range_count = max(1, math.ceil(file_size / RANGE_SIZE))
+        raw_boundaries = [index * file_size // range_count for index in range(range_count + 1)]
+        boundaries = [0] + [
+            align_boundary(file_path, offset, file_size) for offset in raw_boundaries[1:-1]
+        ] + [file_size]
+
+        category = Path(file_path).name.removesuffix(".jsonl")
+        for index, (start, end) in enumerate(zip(boundaries, boundaries[1:])):
+            if start == end:
+                continue
+            jobs.append((file_path, start, end, f"{category}_{index:03d}"))
+
     return jobs
 ```
 
-Each input is a four-item tuple. `remote_parallel_map` unpacks tuple inputs, so the values become the four arguments to `process_main(file_path, start, end, chunk_id)`.
+Each tuple becomes the four arguments to one map call.
 
-### 2. Keep bounded state on each worker
+### 5. Stream one range
 
-The worker requests only its byte range and parses complete newline-delimited records. It scores each review against several deterministic signals, including word-list hits, all-caps text, rant length, and punctuation runs.
-
-For each signal, the main pass keeps at most 40 candidates in memory:
+Because both offsets are newline-aligned, every yielded line is one complete JSON object:
 
 ```python
-TOP_K_MAIN = 40
+def stream_reviews(file_path, start, end):
+    with requests.get(
+        DATASET_ROOT + file_path,
+        headers={"Range": f"bytes={start}-{end - 1}"},
+        stream=True,
+        timeout=300,
+    ) as response:
+        if response.status_code != 206:
+            raise RuntimeError(f"Range request returned {response.status_code}")
+        for line in response.iter_lines():
+            if line:
+                yield json.loads(line)
+```
 
-def process_main(file_path, start, end, chunk_id):
-    heaps = {
-        name: []
-        for name in (
-            "profane_strong",
-            "rant",
-            "screaming",
-            "exclamation",
-            "short_brutal",
-            "five_star_obscene",
-            "five_star_one_word",
-        )
-    }
-    n_parsed = 0
-    tie = 0
+### 6. Score one review
+
+Count exact lexicon matches and weight medium terms below strong terms:
+
+```python
+def score_review(text):
+    words = WORD_RX.findall(text.lower())
+    strong_hits = sum(word in STRONG_PROFANE for word in words)
+    medium_hits = sum(word in MEDIUM_PROFANE for word in words)
+    return strong_hits + 0.4 * medium_hits
+```
+
+This score is deliberately simple and deterministic. It does not infer tone or context.
+
+### 7. Keep one bounded candidate shard
+
+Maintain a 100-item min-heap while streaming the range:
+
+```python
+def process_range(file_path, start, end, chunk_id):
+    candidates = []
+    parsed_count = 0
 
     for review in stream_reviews(file_path, start, end):
-        n_parsed += 1
-        score = _score_main(review.get("text") or "")
+        parsed_count += 1
+        text = review.get("text") or ""
+        score = score_review(text)
+        if score <= 0:
+            continue
+
         candidate = {
-            "text": review.get("text") or "",
-            "rating": review.get("rating"),
-            "asin": review.get("asin"),
-            "score": score,
+            "score": score, "text": text,
+            "rating": review.get("rating"), "asin": review.get("asin"),
         }
-        tie += 1
-        _heappush_topk(
-            heaps["profane_strong"],
-            TOP_K_MAIN,
-            (score["strong"] + score["medium"] * 0.4, tie, candidate),
-        )
-        # The complete worker updates the other six signal heaps here.
+        item = (score, parsed_count, candidate)
 
-    top = {
-        signal: [
-            {"score": value, "review": review}
-            for value, _, review in sorted(heap, reverse=True)
-        ]
-        for signal, heap in heaps.items()
+        if len(candidates) < TOP_K:
+            heapq.heappush(candidates, item)
+        elif score > candidates[0][0]:
+            heapq.heapreplace(candidates, item)
+
+    SHARED_DIR.mkdir(parents=True, exist_ok=True)
+    (SHARED_DIR / f"{chunk_id}.json").write_text(json.dumps({
+        "parsed_count": parsed_count,
+        "candidates": [candidate for _, _, candidate in candidates],
+    }))
+```
+
+Each map call writes at most 100 reviews to shared storage, regardless of range size.
+
+### 8. Reduce the candidate shards
+
+Merge the per-range heaps on one worker:
+
+```python
+def reduce_candidates(chunk_ids):
+    candidates = []
+    parsed_count = 0
+    tie_breaker = 0
+
+    for chunk_id in chunk_ids:
+        shard = json.loads((SHARED_DIR / f"{chunk_id}.json").read_text())
+        parsed_count += shard["parsed_count"]
+
+        for candidate in shard["candidates"]:
+            tie_breaker += 1
+            item = (candidate["score"], tie_breaker, candidate)
+            if len(candidates) < TOP_K:
+                heapq.heappush(candidates, item)
+            elif item[0] > candidates[0][0]:
+                heapq.heapreplace(candidates, item)
+
+    return {
+        "parsed_count": parsed_count,
+        "reviews": [candidate for _, _, candidate in sorted(candidates, reverse=True)],
     }
-
-    out_path = os.path.join(SHARED_MAIN, f"{chunk_id}.json")
-    with open(out_path, "w") as file:
-        json.dump({"chunk_id": chunk_id, "top": top}, file)
-
-    return {"chunk_id": chunk_id, "n_parsed": n_parsed}
 ```
 
-The complete worker returns row counts and timings. The candidate payload stays in shared storage.
+Retaining `TOP_K` candidates from every range is sufficient to recover the global top `TOP_K`.
 
-### 3. Map every range
+### 9. Run the map and reduce
 
-The CLI sends all 545 tuples in one call:
+Add the entry point:
 
 ```python
-results = remote_parallel_map(
-    process_main,
-    jobs,
-    func_cpu=1,
-    func_ram=4,
-    grow=True,
-    max_parallelism=1000,
-    spinner=True,
-)
+def main():
+    jobs = plan_ranges(list_source_files())
+    remote_parallel_map(
+        process_range, jobs, func_cpu=1, func_ram=4, max_parallelism=1_000, grow=True
+    )
+
+    chunk_ids = [job[3] for job in jobs]
+    [result] = remote_parallel_map(
+        reduce_candidates, [chunk_ids], func_cpu=2, func_ram=8, grow=True
+    )
+
+    Path("ranked_reviews.json").write_text(json.dumps(result, indent=2))
+    print(f"Parsed {result['parsed_count']:,} reviews")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
-`grow=True` lets Burla add capacity, while `max_parallelism=1000` caps simultaneous calls. Results can arrive in any order, so each result and shared file carries its own `chunk_id`.
-
-The second pass maps `process_worst` over the same jobs. It uses separate shared paths and stricter rules for censored terms and categorized slur hits.
-
-### 4. Reduce shared files, then build locally
-
-One remote call reads every shard for a pass from shared storage and returns the merged dictionary:
-
-```python
-[result] = remote_parallel_map(
-    reduce_main,
-    [0],
-    grow=True,
-    spinner=True,
-)
-
-Path("samples/ard_reduced.json").write_text(json.dumps(result))
-```
-
-`samples/ard_reduced.json` is written by your local Python process. `analysis.py` reads that file, deduplicates and rescores candidates, then writes the static site's JSON under `data/`.
+The local process receives only the final 100 reviews and one count.
 
 ## Run it
 
-Run the main pass, then the later second pass:
-
 ```bash
-python pipeline.py map-main
-python pipeline.py reduce-main
-python pipeline.py map-worst
-python pipeline.py reduce-worst
-python analysis.py
+python rank_reviews.py
 ```
 
-Serve the generated report from the example directory:
-
-```bash
-python -m http.server 8766
-```
-
-## Recorded result
-
-The measured numbers below come from the original main scoring pass:
+## Recorded source run
 
 | Metric | Value |
 |---|---:|
 | Reviews parsed | 571,544,386 |
 | Source data streamed | 275 GB |
-| Categories | 34 |
+| Category files | 34 |
 | Byte-range jobs | 545 |
 | Peak concurrent calls | more than 500 |
 | Map stage | 3.21 minutes |
 | Reduce stage | 9.2 seconds |
 
-The later second pass was added after this run. Its runtime, and the runtime of the current two-pass workflow, were not recorded.
+Those measurements come from the archived main pass, which calculated several deterministic rankings at once. Its older range parser discarded records crossing interior byte boundaries. The focused version above aligns every boundary first, so its exact corrected row count requires a fresh full run.
 
-The report labels 20,187,204 reviews, or 3.53%, as profane. In the implementation, that count includes any hit in the strong, medium, or mild lists. The mild list includes words such as `terrible`, `worst`, and `hate`, so 3.53% is best read as this project's lexicon-hit rate, not a measured profanity prevalence.
-
-Video Games has the highest reported rate: 302,219 of 4,624,610 parsed reviews, or 6.54%, matched at least one configured term.
-
-## Limits of the ranking
-
-- A JSONL record split by an interior byte boundary is discarded by both adjacent jobs. The recorded total is the number of rows parsed, not proof that every source row was visited.
-- Each shard contributes a bounded candidate set. The final wall ranks those candidates; it is not guaranteed to contain the exact global top 120 reviews.
-- The rules are English-oriented and deterministic. They do not measure sentiment, intent, or whether a flagged term is quoted critically.
+Lexicon matches do not measure sentiment, intent, or whether a term is quoted critically. Treat the output as a deterministic text ranking, not a statement about the reviewers.

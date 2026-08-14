@@ -1,12 +1,13 @@
----
-description: Classify 45,615 TweetEval posts across remote CPU workers and stream the predictions into one local JSONL file.
----
-
 # Classify 45,615 tweets as a batch job
 
-The [TweetEval sentiment training split](https://huggingface.co/datasets/cardiffnlp/tweet_eval/viewer/sentiment/train) contains 45,615 English posts. This example classifies every post with [Twitter-RoBERTa](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest), then writes one JSON object per prediction.
+In this example we:
 
-The local process downloads the Parquet file, sends 64-row batches to remote workers, and writes results as those batches finish. It does not create an inference endpoint or use shared storage.
+* Download all 45,615 TweetEval sentiment training posts locally.
+* Split them into 64-post batches.
+* Classify each batch with Twitter-RoBERTa.
+* Stream the compact predictions into one local JSONL file.
+
+This is an offline batch job, so it does not create an inference endpoint or use shared storage. The data comes from [TweetEval](https://huggingface.co/datasets/cardiffnlp/tweet_eval/viewer/sentiment/train), and the model is [Twitter-RoBERTa](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest).
 
 ## Before you run
 
@@ -22,18 +23,19 @@ Keep the local and worker Python minor versions the same. Burla's default worker
 
 In the dashboard, start at least one worker with enough capacity for a call using 4 CPUs and 16 GB of RAM. The script uses the workers already running in the cluster and does not add more.
 
-## Run the inference job
+## 1. Download TweetEval
 
-Save this complete script as `batch_sentiment.py`:
+Create `batch_sentiment.py` and add the next four blocks in order. Start by downloading the one Parquet file:
 
 ```python
 import io
 import json
-from pathlib import Path
 
 import pyarrow.parquet as pq
 import requests
+import torch
 from burla import remote_parallel_map
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 DATA_URL = (
     "https://huggingface.co/datasets/cardiffnlp/tweet_eval/resolve/main/"
@@ -41,26 +43,31 @@ DATA_URL = (
 )
 MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 BATCH_SIZE = 64
-OUTPUT_PATH = Path("tweet-sentiment.jsonl")
-
+OUTPUT_PATH = "tweet-sentiment.jsonl"
 
 response = requests.get(DATA_URL, timeout=60)
 response.raise_for_status()
 table = pq.read_table(io.BytesIO(response.content), columns=["text"])
+```
 
-rows = [
-    {"row_id": row_id, "text": text}
-    for row_id, text in enumerate(table.column("text").to_pylist())
-]
-batches = [
-    rows[start : start + BATCH_SIZE]
-    for start in range(0, len(rows), BATCH_SIZE)
-]
+## 2. Make 64-post batches
+
+Preserve each source position as `row_id`, then divide the posts:
+
+```python
+texts = table.column("text").to_pylist()
+rows = [{"row_id": row_id, "text": text} for row_id, text in enumerate(texts)]
+batches = [rows[start : start + BATCH_SIZE] for start in range(0, len(rows), BATCH_SIZE)]
 
 print(f"Loaded {len(rows):,} posts in {len(batches):,} batches")
+```
 
+## 3. Classify one batch
 
-def normalize_tweet(text: str) -> str:
+The remote function normalizes TweetEval's placeholders, loads the model once per worker process, and returns only labels and confidence scores:
+
+```python
+def normalize_tweet(text):
     normalized = []
     for token in text.split(" "):
         if token.startswith("@") and len(token) > 1:
@@ -70,29 +77,18 @@ def normalize_tweet(text: str) -> str:
         normalized.append(token)
     return " ".join(normalized)
 
+_TOKENIZER = _MODEL = None
 
-_TOKENIZER = None
-_MODEL = None
-
-
-def predict_batch(batch: list[dict]) -> list[dict]:
+def predict_batch(batch):
     global _TOKENIZER, _MODEL
-
-    import torch
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
     if _MODEL is None:
         _TOKENIZER = AutoTokenizer.from_pretrained(MODEL_NAME)
-        _MODEL = AutoModelForSequenceClassification.from_pretrained(
-            MODEL_NAME
-        ).eval()
+        _MODEL = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME).eval()
 
     encoded = _TOKENIZER(
         [normalize_tweet(row["text"]) for row in batch],
-        padding=True,
-        truncation=True,
-        max_length=128,
-        return_tensors="pt",
+        padding=True, truncation=True, max_length=128, return_tensors="pt",
     )
     with torch.inference_mode():
         probabilities = torch.softmax(_MODEL(**encoded).logits, dim=-1)
@@ -100,32 +96,31 @@ def predict_batch(batch: list[dict]) -> list[dict]:
     label_ids = probabilities.argmax(dim=-1).tolist()
     confidences = probabilities.max(dim=-1).values.tolist()
     return [
-        {
-            "row_id": row["row_id"],
-            "label": _MODEL.config.id2label[label_id].lower(),
-            "confidence": confidence,
-        }
+        {"row_id": row["row_id"], "label": _MODEL.config.id2label[label_id].lower(),
+         "confidence": confidence}
         for row, label_id, confidence in zip(batch, label_ids, confidences)
     ]
+```
 
+## 4. Stream predictions to disk
 
+Submit every batch and write results as they finish:
+
+```python
 written = 0
-with OUTPUT_PATH.open("w") as output:
+with open(OUTPUT_PATH, "w") as output:
     for predictions in remote_parallel_map(
-        predict_batch,
-        batches,
-        func_cpu=4,
-        func_ram=16,
-        generator=True,
+        predict_batch, batches, func_cpu=4, func_ram=16, generator=True
     ):
-        for prediction in predictions:
-            output.write(json.dumps(prediction) + "\n")
-            written += 1
+        output.writelines(json.dumps(prediction) + "\n" for prediction in predictions)
+        written += len(predictions)
 
 print(f"Saved {written:,} predictions to {OUTPUT_PATH}")
 ```
 
-Run it from the activated environment:
+## Run it
+
+Run the completed script from the activated environment:
 
 ```bash
 python batch_sentiment.py

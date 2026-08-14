@@ -1,12 +1,13 @@
----
-description: Classify 1.2 million public GitHub READMEs with deterministic rules, then reduce the shard outputs into a static explorer.
----
-
 # Summarize 1.2 million GitHub READMEs without an LLM
 
-This example exports 1,200,000 README records from BigQuery, classifies them with regex and word-count rules, then reduces the results into a [searchable static report](https://burla-cloud.github.io/examples/github-repo-summarizer/).
+In this example we:
 
-The recorded run used 600 map calls and 16 reduce calls. The example repository reports 47.9 seconds for the map stage and 23.4 seconds for the reduce stage, with more than 500 workers active at peak. You can [read the complete source](https://github.com/Burla-Cloud/examples/tree/main/github-repo-summarizer).
+* Export 1.2 million public GitHub READMEs from BigQuery.
+* Classify them with deterministic regex and word-count rules.
+* Reduce the shard outputs into category summaries.
+* Publish the summaries as a searchable static report.
+
+The recorded run used 600 map calls and 16 reduce calls. The example repository reports 47.9 seconds for the map stage and 23.4 seconds for the reduce stage, with more than 500 workers active at peak. You can [browse the report](https://burla-cloud.github.io/examples/github-repo-summarizer/) or [read the complete source](https://github.com/Burla-Cloud/examples/tree/main/github-repo-summarizer).
 
 The source dataset is the 2016-era `bigquery-public-data.github_repos` snapshot. The published report describes that snapshot, not GitHub today.
 
@@ -20,11 +21,16 @@ burla deploy
 
 If a teammate already deployed the cluster, run `burla login` instead.
 
-Download the example and install its dependencies:
+### Download the example
 
 ```bash
 git clone https://github.com/Burla-Cloud/examples.git
 cd examples/github-repo-summarizer
+```
+
+### Install dependencies
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install \
@@ -33,6 +39,11 @@ pip install \
   db-dtypes \
   "google-cloud-bigquery[bqstorage,pandas]" \
   -r requirements.txt
+```
+
+### Authenticate to BigQuery
+
+```bash
 gcloud auth application-default login
 ```
 
@@ -67,41 +78,88 @@ python prepare.py \
 
 The query has a limit of 1,200,000 rows but no final `ORDER BY`, so separate exports are not guaranteed to select the same records. The resulting file does not contain stars or a precomputed shard ID.
 
-### 2. Summarize 600 stripes
+### 2. Upload the Parquet file
+
+`scale.py` copies `samples/readmes.parquet` to `/workspace/shared/grs/readmes.parquet` before submitting remote calls. The local export is the only large file uploaded by the client.
+
+### 3. Summarize one stripe
 
 Each map call streams the same Parquet file in 4,000-row batches and keeps the row positions assigned to its stripe:
 
 ```python
-def summarize_shard(shard_idx: int, n_shards: int) -> dict:
+def summarize_stripe(shard_idx, n_shards):
     pf = pq.ParquetFile("/workspace/shared/grs/readmes.parquet")
+    rows = []
+    n_err = 0
     global_idx = 0
+    column_names = ["repo_name", "lang", "path", "size", "content"]
 
-    for batch in pf.iter_batches(
-        batch_size=4000,
-        columns=["repo_name", "lang", "path", "size", "content"],
-    ):
+    for batch in pf.iter_batches(batch_size=4000, columns=column_names):
+        columns = {name: batch.column(name).to_pylist() for name in column_names}
         for row_idx in range(batch.num_rows):
             if (global_idx + row_idx) % n_shards != shard_idx:
                 continue
-            # Extract a title, category, install method, and text statistics.
+            try:
+                rows.append(summarize_row(
+                    columns["repo_name"][row_idx] or "",
+                    columns["lang"][row_idx] or "",
+                    columns["path"][row_idx] or "",
+                    int(columns["size"][row_idx] or 0),
+                    columns["content"][row_idx] or "",
+                ))
+            except Exception:
+                n_err += 1
 
         global_idx += batch.num_rows
+    return rows, n_err
 ```
 
 This bounds memory on each worker, but every worker still scans the source file. The stripe is derived from row position at read time.
 
-`scale.py` uploads the local Parquet file to shared storage, then submits all stripes:
+### 4. Write one summary shard
+
+Build bounded counters, write the stripe to shared storage, and return compact status:
+
+```python
+def summarize_shard(shard_idx, n_shards):
+    started = time.time()
+    rows, n_err = summarize_stripe(shard_idx, n_shards)
+    doc_freq = Counter()
+    for row in rows:
+        doc_freq.update(row["tokens"])
+
+    payload = {
+        "shard_idx": shard_idx,
+        "n_shards": n_shards,
+        "n_ok": len(rows),
+        "n_err": n_err,
+        "elapsed_s": round(time.time() - started, 2),
+        "by_cat": dict(Counter(row["category"] for row in rows)),
+        "by_lang": dict(Counter(row["lang"] or "_unknown" for row in rows)),
+        "by_install": dict(Counter(row["install"] for row in rows)),
+        "doc_freq": dict(doc_freq),
+        "rows": rows,
+    }
+    with open(f"/workspace/shared/grs/shards/{shard_idx:04d}.json", "w") as file:
+        json.dump(payload, file)
+    return {
+        "shard_idx": shard_idx,
+        "n_ok": payload["n_ok"],
+        "n_err": payload["n_err"],
+        "elapsed_s": payload["elapsed_s"],
+    }
+```
+
+Each payload contains about one six-hundredth of the input rows plus its category, language, install-method, and token counters.
+
+### 5. Map 600 stripes
+
+Submit all stripes after the upload:
 
 ```python
 jobs = [(shard_idx, 600) for shard_idx in range(600)]
-
 results = remote_parallel_map(
-    summarize_shard,
-    jobs,
-    func_cpu=1,
-    func_ram=4,
-    grow=True,
-    max_parallelism=600,
+    summarize_shard, jobs, func_cpu=1, func_ram=4, grow=True, max_parallelism=600
 )
 ```
 
@@ -115,32 +173,26 @@ Run the upload and map stage:
 python scale.py
 ```
 
-### 3. Reduce the summary files
+### 6. Reduce shared summaries remotely
 
 Sixteen reducer calls each read a different subset of the 600 shared JSON files. They merge category, language, install-method, and token counts while retaining bounded lists of representative repositories:
 
 ```python
-jobs = [
-    (bucket_idx, 16, 400, 200, 6000)
-    for bucket_idx in range(16)
-]
-
+jobs = [(bucket_idx, 16, 400, 200, 6000) for bucket_idx in range(16)]
 bucket_results = remote_parallel_map(
-    reduce_bucket,
-    jobs,
-    func_cpu=2,
-    func_ram=8,
-    max_parallelism=16,
+    reduce_bucket, jobs, func_cpu=2, func_ram=8, max_parallelism=16
 )
 ```
 
-The local process merges those 16 compact results into `samples/grs_reduced.json`:
+### 7. Merge compact reducer results locally
+
+The local process merges those 16 compact results into `samples/grs_reduced.json`. The current `reduce.py` command performs both the remote reduction and this local merge:
 
 ```bash
 python reduce.py
 ```
 
-### 4. Build the report
+### 8. Build the report
 
 The final stage runs locally. It converts the reduced data into the JSON files used by the static explorer:
 
@@ -148,7 +200,11 @@ The final stage runs locally. It converts the reduced data into the JSON files u
 python analysis.py \
   --reduced samples/grs_reduced.json \
   --out data
+```
 
+### 9. Serve the report
+
+```bash
 python -m http.server 8767
 ```
 

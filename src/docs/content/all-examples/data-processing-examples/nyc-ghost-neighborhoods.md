@@ -1,14 +1,13 @@
----
-description: Count pickups in 371 monthly taxi files, reduce 2.76 billion trips into zone histories, and rank the largest changes.
----
-
 # Find changes in NYC pickup activity across 2.76 billion trips
 
-This example processes 371 monthly Parquet files from the [NYC TaxiData mirror](https://huggingface.co/datasets/DinoPonjevic/NYC_TaxiData_RAW). The files cover yellow taxis from 2011 through 2024, green taxis from 2014 through 2024, and high-volume for-hire vehicles from February 2019 through 2024.
+In this example we:
 
-Each remote call reduces one file to pickup counts by taxi zone. The local process combines those compact results into 168 monthly totals for 264 zones, then ranks zones by changes in their own histories.
+* Process 371 monthly NYC taxi Parquet files in parallel.
+* Reduce each file to pickup counts by taxi zone.
+* Combine the compact results into 168 monthly histories.
+* Rank the zones with the largest changes in pickup activity.
 
-A run completed the 371-call map in 14.48 seconds and aggregated 2,758,715,765 trips with a valid pickup zone. You can [browse the generated report](https://burla-cloud.github.io/examples/nyc-ghost-neighborhoods/).
+A run completed the 371-call map in 14.48 seconds and aggregated 2,758,715,765 trips with a valid pickup zone from the [NYC TaxiData mirror](https://huggingface.co/datasets/DinoPonjevic/NYC_TaxiData_RAW). You can [browse the generated report](https://burla-cloud.github.io/examples/nyc-ghost-neighborhoods/).
 
 ## Before you run
 
@@ -19,8 +18,8 @@ The current `main` copy of the example has an import regression: `process_month`
 ```bash
 mkdir nyc-ghost-neighborhoods
 cd nyc-ghost-neighborhoods
-curl -L \
-  https://raw.githubusercontent.com/Burla-Cloud/examples/fde0fde0e5/nyc-ghost-neighborhoods/nyc_ghost_neighborhoods.py \
+BASE_URL=https://raw.githubusercontent.com/Burla-Cloud/examples/fde0fde0e5
+curl -L "$BASE_URL/nyc-ghost-neighborhoods/nyc_ghost_neighborhoods.py" \
   -o nyc_ghost_neighborhoods.py
 python -m venv .venv
 source .venv/bin/activate
@@ -45,6 +44,15 @@ The snippets below are abridged excerpts from the pinned complete script.
 The source defines only the periods that exist in the mirror:
 
 ```python
+from collections import defaultdict
+
+import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
+import requests
+from burla import remote_parallel_map
+
+
 TAXI_TYPES = [
     ("yellow", 201101, 202412, ("tpep_pickup_datetime", "pickup_datetime")),
     ("green", 201401, 202412, ("lpep_pickup_datetime", "pickup_datetime")),
@@ -66,29 +74,66 @@ The worker downloads one Parquet file into memory, reads only its pickup-zone an
 
 ```python
 def process_month(task_id):
-    import requests as _requests
-
     prefix = task_id.split("_", 1)[0]
-    year_month = task_id.rsplit("_", 1)[-1]
-    year, month = map(int, year_month.split("-"))
+    year, month = map(int, task_id.rsplit("_", 1)[-1].split("-"))
 
-    response = _requests.get(
-        _hf_url_for_task(task_id),
-        timeout=300,
-        allow_redirects=True,
-    )
+    response = requests.get(_hf_url_for_task(task_id), timeout=300, allow_redirects=True)
     response.raise_for_status()
 
     parquet = pq.ParquetFile(pa.BufferReader(response.content))
-    counts = defaultdict(int)
+    names_by_lowercase = {name.lower(): name for name in parquet.schema_arrow.names}
 
-    for batch in parquet.iter_batches(
-        batch_size=500_000,
-        columns=[zone_col, pickup_time_col],
-    ):
-        # Keep rows whose timestamp belongs to the file's stated month.
-        # Count each valid pickup-zone ID with numpy.unique.
-        ...
+    def find_column(candidates):
+        for name in candidates:
+            if name.lower() in names_by_lowercase:
+                return names_by_lowercase[name.lower()]
+        return None
+
+    zone_col = find_column(("PULocationID", "PUlocationID", "pickup_location_id"))
+    pickup_time_col = find_column(
+        ("tpep_pickup_datetime", "lpep_pickup_datetime", "pickup_datetime",
+         "Pickup_date", "Trip_Pickup_DateTime")
+    )
+    if zone_col is None:
+        return {
+            "taxi_type": prefix,
+            "year": year,
+            "month": month,
+            "rows_with_zone": 0,
+            "counts": [],
+            "skip_reason": "pickup-zone column missing",
+        }
+
+    counts = defaultdict(int)
+    rows_with_zone = 0
+    columns = [zone_col]
+    if pickup_time_col is not None:
+        columns.append(pickup_time_col)
+
+    for batch in parquet.iter_batches(batch_size=500_000, columns=columns):
+        if pickup_time_col is None:
+            in_month = np.ones(batch.num_rows, dtype=bool)
+        else:
+            pickup_times = batch.column(pickup_time_col).to_numpy(zero_copy_only=False)
+            if np.issubdtype(pickup_times.dtype, np.datetime64):
+                pickup_years = pickup_times.astype("datetime64[Y]").astype(int) + 1970
+                pickup_months = pickup_times.astype("datetime64[M]").astype(int) % 12 + 1
+                in_month = (pickup_years == year) & (pickup_months == month)
+            else:
+                in_month = np.ones(batch.num_rows, dtype=bool)
+
+        try:
+            zones = np.asarray(
+                batch.column(zone_col).to_numpy(zero_copy_only=False), dtype="float64"
+            )
+        except (TypeError, ValueError):
+            continue
+
+        valid = ~np.isnan(zones) & (zones > 0) & (zones < 1_000) & in_month
+        rows_with_zone += int(valid.sum())
+        zone_ids, zone_counts = np.unique(zones[valid].astype("int32"), return_counts=True)
+        for zone_id, count in zip(zone_ids, zone_counts):
+            counts[int(zone_id)] += int(count)
 
     return {
         "taxi_type": prefix,
@@ -104,14 +149,7 @@ The complete worker handles more historical column names, filters rows whose tim
 ### 3. Map the archive
 
 ```python
-results = list(
-    remote_parallel_map(
-        process_month,
-        build_task_list(),
-        func_cpu=1,
-        func_ram=4,
-    )
-)
+results = remote_parallel_map(process_month, build_task_list(), func_cpu=1, func_ram=4)
 ```
 
 `remote_parallel_map` does not promise result order. The reducer uses the `year` and `month` in each dictionary, so completion order does not affect the matrix.

@@ -93,21 +93,21 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         route: "/docs/featured-examples/arxiv-fossils",
         title: "Cluster 2.7M arXiv abstracts",
         description:
-          "Embed a 2.7M-paper snapshot in parallel, cluster it by topic, and find its semantic outlier.",
+          "Embed a 2.7M-paper snapshot, assign 400 topic clusters, and summarize representative papers.",
         icon: "spiral",
       },
       {
         route: "/docs/featured-examples/airbnb-burla",
-        title: "Process 1.7M Airbnb photo rows",
+        title: "CLIP-score 1.7M Airbnb photos",
         description:
-          "Process 1.7M photo rows and 50.7M reviews through staged CLIP, embedding, and Haiku filters.",
+          "Score public listing photos with CLIP, then rank one text prompt inside Burla.",
         icon: "image",
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/gpu-embedding-demo",
-        title: "Build Wikipedia search on A100s",
+        title: "Embed 50K Wikipedia articles",
         description:
-          "Embed Wikipedia text on up to eight A100s, store vector shards in shared storage, and search them locally.",
+          "Embed Wikipedia text on up to eight A100s, then search the shared vector shards on Burla.",
         icon: "embed",
       },
       {
@@ -119,7 +119,7 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/all-examples/ml-embeddings-and-search/ml-inference-batch",
-        title: "Run batch sentiment inference",
+        title: "Classify 45K tweets in parallel",
         description:
           "Classify 45,615 posts across CPU workers and stream predictions back to the client.",
         icon: "net",
@@ -147,9 +147,9 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/featured-examples/amazon-review-distiller",
-        title: "Rank 571.5M Amazon reviews",
+        title: "Rank 572M Amazon reviews",
         description:
-          "Stream 275GB across 545 byte-range jobs, then reduce bounded candidates into one ranked report.",
+          "Score 545 newline-aligned byte ranges once, then reduce bounded candidates into one ranking.",
         icon: "star",
       },
       {
@@ -163,19 +163,19 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         route: "/docs/all-examples/data-processing-examples/world-photo-index",
         title: "Map geotagged Flickr photos",
         description:
-          "Reverse-geocode 4,094 Flickr metadata shards and aggregate tags into a browsable geographic index.",
+          "Map 4,094 Flickr metadata shards to nearest-city country codes and combine the counts.",
         icon: "pin",
       },
       {
         route: "/docs/all-examples/data-processing-examples/github-repo-summarizer",
-        title: "Summarize 1.2M GitHub READMEs",
+        title: "Summarize 1M GitHub READMEs",
         description:
           "Classify 1.2M READMEs with deterministic rules, then reduce them into an inspectable report.",
         icon: "code",
       },
       {
         route: "/docs/all-examples/data-processing-examples/parquet-parallel",
-        title: "Audit an S3 Parquet prefix",
+        title: "Audit 5,000 Parquet files",
         description:
           "Run one PyArrow check per S3 object and combine compact file statistics into a local CSV.",
         icon: "scan",
@@ -196,7 +196,7 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
     examples: [
       {
         route: "/docs/all-examples/production-data-jobs/python-etl-no-airflow",
-        title: "ETL S3 files to Postgres",
+        title: "ETL 10K S3 files to Postgres",
         description:
           "Transform gzipped S3 objects while capping concurrent Postgres connections.",
         icon: "etl",
@@ -210,23 +210,23 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/all-examples/production-data-jobs/rate-limited-api-requests",
-        title: "Run a rate-limited API backfill",
+        title: "Run a 2M-user API backfill",
         description:
           "Backfill records with bounded concurrency, local pacing, and explicit retry outcomes.",
         icon: "gate",
       },
       {
         route: "/docs/all-examples/production-data-jobs/parallel-web-scraping",
-        title: "Scrape web pages in parallel",
+        title: "Scrape 1M web pages",
         description:
-          "Scrape authorized static pages in parallel while pacing requests to each origin.",
+          "Scrape authorized static pages in parallel while pacing requests to each host.",
         icon: "globe",
       },
       {
         route: "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
-        title: "Run parallel option simulations",
+        title: "Run 1B option simulations",
         description:
-          "Reduce distributed option-price paths into a reproducible estimate with a standard error.",
+          "Reduce seeded option-price paths into an estimate with a standard error.",
         icon: "dice",
       },
     ],
@@ -252,14 +252,14 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",
-        title: "Find NOAA's largest daily precipitation value",
+        title: "Find NOAA's rainiest day",
         description:
           "Scan GHCN-Daily year files in parallel and reduce quality-controlled precipitation values.",
         icon: "raindrop",
       },
       {
         route: "/docs/all-examples/scientific-and-geospatial-work/gdal-raster-processing",
-        title: "Compute NDVI for Sentinel-2 tiles",
+        title: "NDVI for 2K Sentinel tiles",
         description:
           "Compute NDVI from public Sentinel-2 COGs in parallel and save GeoTIFFs.",
         icon: "raster",

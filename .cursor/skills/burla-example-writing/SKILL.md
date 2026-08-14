@@ -38,6 +38,8 @@ Each tutorial step demonstrates exactly one concept or feature. If a heading nat
 - Return a primitive when a dictionary, object, dataframe, or metadata wrapper adds no value.
 - Do not add helper functions, configuration, abstractions, retries, logging, or cleanup unless the example needs them.
 - Do not repeat imports or setup in sequential code blocks.
+- Put every import once at module scope in the initial setup block. Never import inside a function, including lazy model loaders and functions submitted to Burla.
+- Keep code visually compact. Put paths, short calls, signatures, comprehensions, and expressions on one line when they fit comfortably in the code pane; wrap only when it improves readability.
 - Do not sort, reshape, or decorate output only to make it look nicer. Explain nondeterminism when it matters.
 - Never add a smoke test. Remove smoke tests encountered while editing.
 
@@ -71,12 +73,16 @@ Place explanations immediately after the code they clarify. Do not narrate obvio
 
 Featured and workload examples may be longer when the real workflow requires it:
 
+- Open with `In this example we:` followed by three or four short bullets that summarize the complete workflow. Use this instead of a prose summary, and omit frontmatter `description` because this site renders it as a competing subtitle.
 - Name the real dataset, tool, hardware, and result.
 - Explain why each stage exists.
 - Keep one operation per section.
+- Keep sidebar titles short. Do not copy the longer page heading into the sidebar.
 - Show measured numbers only when they came from the real run.
 - Prefer concrete operational details over generic cloud commentary.
 - Never invent scale, runtime, cost, output, failures, or benchmarks.
+
+Keep large artifacts in the cloud. If a stage writes to `/workspace/shared`, submit the next stage to Burla so it can read that path directly, then return only the compact result the client needs. Do not use a provider SDK to download shared artifacts into the local process for analysis.
 
 ## Write like a human
 

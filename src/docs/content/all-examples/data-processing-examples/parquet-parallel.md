@@ -1,10 +1,11 @@
----
-description: Read every Parquet object in an S3 prefix on a separate remote call, then combine compact file statistics locally.
----
-
 # Audit every Parquet file in an S3 prefix
 
-This template lists the Parquet objects under one Amazon S3 prefix, runs the same checks on each object, and writes one local CSV row per file. Each remote call returns a small dictionary instead of transferring the Parquet data back to your computer.
+In this example we:
+
+* List every Parquet object under one S3 prefix.
+* Run the same schema and data checks on each object in parallel.
+* Return one compact statistics dictionary per file.
+* Write the combined results to a local CSV.
 
 Replace the bucket, prefix, and column names with your own. The example repository does not include a dataset or a recorded run, so no file count or runtime is claimed here. You can also [read the source template](https://github.com/Burla-Cloud/examples/blob/main/parquet-parallel/main.py).
 
@@ -42,7 +43,6 @@ The local process builds the input list. An S3 paginator is required because one
 
 ```python
 import io
-from pathlib import Path
 
 import boto3
 import pandas as pd
@@ -51,18 +51,15 @@ from burla import remote_parallel_map
 
 BUCKET = "my-events-bucket"
 PREFIX = "events/2025/"
-REPORT_PATH = Path("parquet_scan_report.csv")
+REPORT_PATH = "parquet_scan_report.csv"
 
 
-def list_parquet_keys() -> list[str]:
+def list_parquet_keys():
     keys = []
     paginator = boto3.client("s3").get_paginator("list_objects_v2")
-
     for page in paginator.paginate(Bucket=BUCKET, Prefix=PREFIX):
         keys.extend(
-            obj["Key"]
-            for obj in page.get("Contents", [])
-            if obj["Key"].endswith(".parquet")
+            obj["Key"] for obj in page.get("Contents", []) if obj["Key"].endswith(".parquet")
         )
 
     return sorted(keys)
@@ -82,15 +79,9 @@ Each key becomes one input to `remote_parallel_map`.
 The worker downloads one object into memory, decodes only the two required columns, and returns the statistics needed for the report:
 
 ```python
-def scan_parquet_file(key: str) -> dict:
-    s3 = boto3.client("s3")
-    response = s3.get_object(Bucket=BUCKET, Key=key)
-    body = response["Body"].read()
-
-    table = pq.read_table(
-        io.BytesIO(body),
-        columns=["user_id", "revenue"],
-    )
+def scan_parquet_file(key):
+    response = boto3.client("s3").get_object(Bucket=BUCKET, Key=key)
+    table = pq.read_table(io.BytesIO(response["Body"].read()), columns=["user_id", "revenue"])
     user_ids = table.column("user_id").combine_chunks()
     revenue = table.column("revenue").to_pandas()
 
@@ -98,13 +89,9 @@ def scan_parquet_file(key: str) -> dict:
         "key": key,
         "rows": table.num_rows,
         "bytes": response["ContentLength"],
-        "distinct_users": len(user_ids.unique()),
+        "distinct_users": len(user_ids.drop_null().unique()),
         "revenue_sum": float(revenue.sum()),
-        "revenue_null_rate": (
-            float(revenue.isna().mean())
-            if len(revenue)
-            else 0.0
-        ),
+        "revenue_null_rate": float(revenue.isna().mean()) if len(revenue) else 0.0,
     }
 ```
 
@@ -113,13 +100,7 @@ Reading into `io.BytesIO` gives PyArrow the seekable input it needs. The file bo
 ## 3. Scan the full prefix
 
 ```python
-stats = remote_parallel_map(
-    scan_parquet_file,
-    parquet_keys,
-    func_cpu=1,
-    func_ram=4,
-    grow=True,
-)
+stats = remote_parallel_map(scan_parquet_file, parquet_keys, func_cpu=1, func_ram=4, grow=True)
 ```
 
 Burla starts calls up to the cluster's available capacity and queues the rest. Return values can arrive in any order.
@@ -131,7 +112,6 @@ Sort by object key before writing the CSV so reruns are easy to compare:
 ```python
 report = pd.DataFrame(stats).sort_values("key")
 report.to_csv(REPORT_PATH, index=False)
-
 print(f"Wrote {len(report):,} rows to {REPORT_PATH}")
 ```
 

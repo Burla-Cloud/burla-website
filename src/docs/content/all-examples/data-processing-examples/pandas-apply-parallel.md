@@ -1,10 +1,11 @@
----
-description: Split a partitioned Parquet dataset into worker-sized slices and run an ordinary row-wise pandas transformation on each slice.
----
-
 # Run pandas apply across Parquet partitions
 
-This template divides an S3 Parquet dataset by `user_id`, loads each slice into pandas on a remote worker, and runs an ordinary `df.apply(..., axis=1)`. The row function stays regular pandas code.
+In this example we:
+
+* Divide a partitioned S3 dataset into worker-sized user ranges.
+* Load each range into pandas on a remote worker.
+* Run an ordinary row-wise `df.apply` transformation.
+* Combine the transformed slices locally.
 
 This is a configurable template, not a benchmark. The repository does not include the event dataset or measured output. You can [read the source template](https://github.com/Burla-Cloud/examples/blob/main/pandas-apply-parallel/main.py).
 
@@ -41,9 +42,9 @@ Burla grants `burla-node` access to its own shared-storage bucket by default, no
 
 The blocks below form one script. Use an existing user manifest if you have one. Building the manifest shown here scans the complete `user_id` column locally.
 
-## 1. Build non-overlapping inputs
+## 1. Build the user manifest
 
-The source template uses 1,200 chunks. Treat that as configuration, not a measured worker count:
+Scan the `user_id` column once:
 
 ```python
 import re
@@ -56,77 +57,73 @@ DATASET = "s3://my-bucket/events/"
 N_CHUNKS = 1_200
 
 dataset = ds.dataset(DATASET, format="parquet")
-all_users = (
-    dataset.to_table(columns=["user_id"])
-    .column("user_id")
-    .combine_chunks()
-    .unique()
-    .to_pylist()
-)
+all_users = dataset.to_table(columns=["user_id"]).column("user_id").combine_chunks()
+all_users = all_users.drop_null().unique().to_pylist()
 
 if not all_users:
     raise RuntimeError(f"No users found in {DATASET}")
+```
 
+## 2. Split users into non-overlapping inputs
+
+The source template uses 1,200 chunks. Treat that as configuration, not a measured worker count:
+
+```python
 n_chunks = min(N_CHUNKS, len(all_users))
-chunks = [
-    all_users[chunk_id::n_chunks]
-    for chunk_id in range(n_chunks)
-]
-
+chunks = [all_users[chunk_id::n_chunks] for chunk_id in range(n_chunks)]
 print(f"Built {len(chunks):,} user-id chunks")
 ```
 
 The strided split assigns every user to exactly one chunk. All rows for one user therefore go to the same remote call.
 
-## 2. Apply the row function on one slice
+## 3. Define the row transformation
 
-Each worker reads only its users, converts that table to pandas, and applies the transformation:
+Keep the ordinary row-wise pandas function at module scope:
 
 ```python
-def apply_on_chunk(user_ids: list[str]) -> pd.DataFrame:
+utm_pattern = re.compile(r"utm_source=([^&]+)")
+
+
+def enrich(row):
+    url = row["url"] if isinstance(row["url"], str) else ""
+    match = utm_pattern.search(url)
+    return pd.Series({"utm_source": match.group(1) if match else None, "url_len": len(url)})
+```
+
+## 4. Apply the transformation to one slice
+
+Each worker filters for its users, converts the matching rows to pandas, and applies the transformation. Without partition or row-group pruning, the filter can still scan the full dataset.
+
+```python
+def apply_on_chunk(user_ids):
     dataset = ds.dataset(DATASET, format="parquet")
-    table = dataset.filter(
-        ds.field("user_id").isin(user_ids)
-    ).to_table(columns=["user_id", "url"])
-    frame = table.to_pandas()
-
-    utm_pattern = re.compile(r"utm_source=([^&]+)")
-
-    def enrich(row: pd.Series) -> pd.Series:
-        url = row["url"] if isinstance(row["url"], str) else ""
-        match = utm_pattern.search(url)
-        return pd.Series({
-            "utm_source": match.group(1) if match else None,
-            "url_len": len(url),
-        })
-
-    added_columns = frame.apply(enrich, axis=1)
-    return pd.concat([frame, added_columns], axis=1)
+    frame = dataset.filter(ds.field("user_id").isin(user_ids)).to_table(
+        columns=["user_id", "url"]
+    ).to_pandas()
+    return pd.concat([frame, frame.apply(enrich, axis=1)], axis=1)
 ```
 
 The parallel boundary is outside `enrich`. You can replace that function with existing row-wise parsing or scoring logic without converting it to another dataframe API.
 
-## 3. Run the slices in parallel
+## 5. Run the slices in parallel
 
 ```python
-frames = remote_parallel_map(
-    apply_on_chunk,
-    chunks,
-    func_cpu=2,
-    func_ram=8,
-    grow=True,
-)
+frames = remote_parallel_map(apply_on_chunk, chunks, func_cpu=2, func_ram=8, grow=True)
 ```
 
 Burla replicates the installed pandas and PyArrow versions on the workers. Returned frames can arrive in any order.
 
-## 4. Combine the returned frames
+## 6. Combine the returned frames
 
 ```python
 final = pd.concat(frames, ignore_index=True)
-final.to_parquet("enriched.parquet", index=False)
+```
 
+## 7. Write the enriched dataset
+
+```python
+final.to_parquet("enriched.parquet", index=False)
 print(f"Wrote {len(final):,} rows to enriched.parquet")
 ```
 
-Both `frames` and `final` exist in local memory during concatenation. If the enriched dataset cannot fit there, write one output object per worker and return object keys instead of DataFrames.
+Both `frames` and `final` exist in local memory during concatenation. If the enriched dataset cannot fit there, have each worker write directly to a user-owned S3 output prefix and return only its object key and row count.

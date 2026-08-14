@@ -1,12 +1,13 @@
----
-description: Stream NOAA's annual GHCN-Daily files in parallel and reduce them to the largest quality-controlled precipitation value.
----
-
 # Find NOAA's largest daily precipitation value
 
-[GHCN-Daily](https://www.ncei.noaa.gov/products/land-based-station/global-historical-climatology-network-daily) combines daily observations from land stations around the world. NOAA publishes the data as one compressed CSV per year, so each remote call can scan one file independently and return only that year's maximum.
+In this example we:
 
-This example excludes the current, incomplete calendar year. NOAA updates the full period of record every day, so the result can still change when historical observations or quality flags are revised.
+* Discover every complete annual GHCN-Daily file.
+* Scan one compressed CSV per remote call.
+* Keep only quality-controlled precipitation observations.
+* Reduce the yearly maxima to every tied station and date.
+
+[GHCN-Daily](https://www.ncei.noaa.gov/products/land-based-station/global-historical-climatology-network-daily) combines daily observations from land stations around the world. This example excludes the current, incomplete calendar year, but NOAA can still revise historical observations and quality flags.
 
 ## Before you run
 
@@ -30,9 +31,9 @@ The [by-year directory](https://www.ncei.noaa.gov/pub/data/ghcn/daily/by_year/) 
 
 Do not generate years with a continuous range. The archive contains `1750.csv.gz`, then resumes at 1763. The script reads the directory listing so it submits only files that exist.
 
-## Scan and reduce
+## 1. Discover complete years
 
-Save this complete script as `rainiest_day.py`:
+Create `rainiest_day.py` and add the next five blocks in order. Start from NOAA's directory listing because the archive has gaps:
 
 ```python
 import csv
@@ -52,48 +53,45 @@ STATIONS_URL = f"{BASE_URL}/ghcnd-stations.txt"
 HEADERS = {"User-Agent": "burla-ghcn-example/1.0"}
 
 
-def available_complete_years() -> list[int]:
+def available_complete_years():
     response = requests.get(f"{BY_YEAR_URL}/", headers=HEADERS, timeout=60)
     response.raise_for_status()
     listed_years = {
-        int(year)
-        for year in re.findall(r'href="(\d{4})\.csv\.gz"', response.text)
+        int(year) for year in re.findall(r'href="(\d{4})\.csv\.gz"', response.text)
     }
     return sorted(year for year in listed_years if year < date.today().year)
 
 
-def process_year(year: int) -> dict:
+years = available_complete_years()
+```
+
+## 2. Scan one annual file
+
+Each remote call streams one gzip-compressed CSV and keeps only its tied maximum records:
+
+```python
+def process_year(year):
     rows_seen = 0
     max_tenths_mm = None
     max_records = []
 
     with requests.get(
-        f"{BY_YEAR_URL}/{year}.csv.gz",
-        headers=HEADERS,
-        stream=True,
-        timeout=(30, 600),
+        f"{BY_YEAR_URL}/{year}.csv.gz", headers=HEADERS, stream=True, timeout=(30, 600)
     ) as response:
         response.raise_for_status()
         with gzip.GzipFile(fileobj=response.raw) as compressed:
-            text = io.TextIOWrapper(
-                compressed,
-                encoding="utf-8",
-                errors="replace",
-                newline="",
-            )
+            text = io.TextIOWrapper(compressed, encoding="utf-8", errors="replace", newline="")
             for row in csv.reader(text):
                 rows_seen += 1
                 if len(row) < 7 or row[2] != "PRCP":
                     continue
-                if row[5] or not row[3] or row[3] == "-9999":
+                if row[5] or row[3] in {"", "-9999"}:
                     continue
 
                 value = int(row[3])
                 record = {
-                    "station_id": row[0],
-                    "date": row[1],
-                    "measurement_flag": row[4] or None,
-                    "source_flag": row[6] or None,
+                    "station_id": row[0], "date": row[1],
+                    "measurement_flag": row[4] or None, "source_flag": row[6] or None,
                 }
                 if max_tenths_mm is None or value > max_tenths_mm:
                     max_tenths_mm = value
@@ -107,9 +105,37 @@ def process_year(year: int) -> dict:
         "max_tenths_mm": max_tenths_mm,
         "records": max_records,
     }
+```
 
+## 3. Run the years in parallel
 
-def load_stations(station_ids: set[str]) -> dict:
+Limit the map to eight simultaneous downloads from NOAA:
+
+```python
+year_results = remote_parallel_map(
+    process_year, years, func_cpu=1, func_ram=2, max_parallelism=8, grow=True
+)
+```
+
+## 4. Reduce the yearly maxima
+
+The local reduction compares only the compact dictionaries returned by the workers:
+
+```python
+global_max = max(result["max_tenths_mm"] for result in year_results
+                 if result["max_tenths_mm"] is not None)
+records = [
+    record for result in year_results if result["max_tenths_mm"] == global_max
+    for record in result["records"]
+]
+```
+
+## 5. Attach station metadata
+
+Download the station table once, add names and coordinates to the tied records, then write the result:
+
+```python
+def load_stations(station_ids):
     response = requests.get(STATIONS_URL, headers=HEADERS, timeout=60)
     response.raise_for_status()
 
@@ -124,30 +150,7 @@ def load_stations(station_ids: set[str]) -> dict:
             }
     return stations
 
-
-years = available_complete_years()
-year_results = remote_parallel_map(
-    process_year,
-    years,
-    func_cpu=1,
-    func_ram=2,
-    grow=True,
-    max_parallelism=8,
-)
-
-global_max = max(
-    result["max_tenths_mm"]
-    for result in year_results
-    if result["max_tenths_mm"] is not None
-)
-records = [
-    record
-    for result in year_results
-    if result["max_tenths_mm"] == global_max
-    for record in result["records"]
-]
 stations = load_stations({record["station_id"] for record in records})
-
 output = {
     "years_scanned": len(years),
     "rows_scanned": sum(result["rows_seen"] for result in year_results),
@@ -155,10 +158,7 @@ output = {
     "records": [
         {
             **record,
-            "date": (
-                f"{record['date'][:4]}-{record['date'][4:6]}-"
-                f"{record['date'][6:]}"
-            ),
+            "date": f"{record['date'][:4]}-{record['date'][4:6]}-{record['date'][6:]}",
             **stations.get(record["station_id"], {}),
         }
         for record in records
@@ -176,5 +176,7 @@ python rainiest_day.py
 ```
 
 Each worker streams its CSV and retains only the tied maximum records for that year. `max_parallelism=8` limits the job to eight simultaneous downloads from NOAA. The final reduction happens locally over a few hundred small dictionaries.
+
+The `records` array follows Burla completion order. Sort it before writing if stable output order matters.
 
 The output is the largest `PRCP` value with a blank NOAA quality flag. It is a database result, not an independently validated rainfall record; the measurement and source flags are retained for that review.

@@ -1,18 +1,17 @@
----
-description: Process 1.7 million Inside Airbnb photo rows and 50.7 million reviews through staged CLIP, embedding, and Haiku filters.
----
+# Rank 1.7 million Airbnb photos with CLIP
 
-# Analyze 1.7 million Airbnb photo rows
+In this example we:
 
-This pipeline turns public [Inside Airbnb](https://insideairbnb.com/get-the-data/) exports into photo galleries and statistical findings. The published run covers 119 cities, 282 city-snapshot pairs, 1.74 million latest listings, 1.71 million photo-score rows, and 50.69 million reviews.
+* Start from 1,945,032 public listing-photo URLs in shared storage.
+* Split the manifest into 700-photo Parquet files.
+* Score each available image against one text prompt with CLIP.
+* Rank the shared score shards remotely and return 25 matches.
 
-CLIP ranks the photos, Claude Haiku validates small visual shortlists, and a separate review funnel narrows tens of millions of reviews before asking Haiku to score them. You can [explore the published result](https://burla-cloud.github.io/examples/airbnb-burla-demo/) or [read the complete source](https://github.com/Burla-Cloud/examples/tree/main/airbnb-burla-demo).
+The recorded source run wrote 1,710,664 photo-score rows across 119 cities. Inside Airbnb supplies the listing IDs; the photo URLs come from the public listing pages referenced by those records. You can [inspect the dataset](https://insideairbnb.com/get-the-data/) or [read the data preparation source](https://github.com/Burla-Cloud/examples/tree/main/airbnb-burla-demo).
 
 ## Before you run
 
-Complete [Getting Started](/docs/get-started), then deploy the cluster with `burla deploy`. This example passes large artifacts between separate remote calls through `/workspace/shared`, which is available inside workers on a deployed cluster. The local Python process cannot open those paths.
-
-Clone the example and install it with Python 3.12:
+Complete [Getting Started](/docs/get-started), then download the example and create a Python 3.12 environment:
 
 ```bash
 git clone https://github.com/Burla-Cloud/examples.git
@@ -20,132 +19,210 @@ cd examples/airbnb-burla-demo
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-export ANTHROPIC_API_KEY=...
+burla deploy
 ```
 
-The full workload uses paid cloud compute and the Anthropic API. Preload the two model weight sets once so hundreds of workers do not download the same files:
+Prepare the shared photo manifest:
+
+```bash
+make PY="$PWD/.venv/bin/python" stage00 stage01 stage02a
+```
+
+Those stages collect public URLs. This walkthrough begins with their output at `/workspace/shared/airbnb/photo_manifest.parquet`.
+
+Preload the 605 MB ViT-B/32 weights once:
 
 ```bash
 python scripts/preload_clip_weights.py
-python scripts/preload_st_weights.py
 ```
 
-The repository's `make all` target still includes the deprecated YOLO stage that failed during the published run. Its partial output is not needed for the photo galleries. Run the active stages directly, and invoke the review stage without the Makefile's reuse flags:
+{% hint style="warning" %}
+The full run downloads nearly two million public images and uses paid cloud compute. Image URLs can disappear or begin rejecting requests after the recorded run.
+{% endhint %}
+
+## Build the script
+
+Create `rank_airbnb_photos.py`. Each section below adds one step.
+
+### 1. Configure the input and output
+
+Keep the manifest, model weights, batch files, and scores in shared storage:
+
+```python
+import io
+from pathlib import Path
+
+import open_clip
+import pandas as pd
+import pyarrow.parquet as pq
+import requests
+import torch
+from burla import remote_parallel_map
+from PIL import Image
+
+MANIFEST_PATH = Path("/workspace/shared/airbnb/photo_manifest.parquet")
+WEIGHTS_PATH = Path("/workspace/shared/airbnb/clip_weights/openai.bin")
+BATCH_DIR = Path("/workspace/shared/airbnb/clip_batches")
+SCORE_DIR = Path("/workspace/shared/airbnb/clip_scores")
+
+BATCH_SIZE = 700
+PROMPT = "an unusual or surprising scene for a rental"
+USER_AGENT = "Mozilla/5.0 (compatible; burla-airbnb-example/1.0)"
+```
+
+### 2. Split the photo manifest
+
+One worker reads the manifest and writes a small Parquet file for each score call:
+
+```python
+def split_manifest(manifest_path):
+    table = pq.read_table(manifest_path, columns=["listing_id", "image_idx", "image_url"])
+    BATCH_DIR.mkdir(parents=True, exist_ok=True)
+
+    batch_paths = []
+    for batch_id, start in enumerate(range(0, table.num_rows, BATCH_SIZE)):
+        output_path = BATCH_DIR / f"{batch_id:05d}.parquet"
+        pq.write_table(table.slice(start, BATCH_SIZE), output_path)
+        batch_paths.append(str(output_path))
+
+    return batch_paths
+```
+
+The local process receives path strings, not the 1.9-million-row table.
+
+### 3. Load CLIP once per worker
+
+Cache the model, image transform, and prompt vector in each worker process:
+
+```python
+_CLIP = None
+
+
+def get_clip():
+    global _CLIP
+    if _CLIP is None:
+        torch.set_num_threads(1)
+        model, _, preprocess = open_clip.create_model_and_transforms(
+            "ViT-B-32", pretrained=str(WEIGHTS_PATH)
+        )
+        model.eval()
+
+        tokenizer = open_clip.get_tokenizer("ViT-B-32")
+        with torch.inference_mode():
+            text_vector = model.encode_text(tokenizer([PROMPT]))
+            text_vector /= text_vector.norm(dim=-1, keepdim=True)
+
+        _CLIP = model, preprocess, text_vector
+
+    return _CLIP
+```
+
+The weights remain in shared storage. Each worker process reads them once when it initializes CLIP.
+
+### 4. Score one photo
+
+Download one image, embed it, and return its cosine similarity to the prompt:
+
+```python
+def score_photo(image_url):
+    response = requests.get(image_url, timeout=30, headers={"User-Agent": USER_AGENT})
+    response.raise_for_status()
+    image = Image.open(io.BytesIO(response.content)).convert("RGB")
+
+    model, preprocess, text_vector = get_clip()
+    with torch.inference_mode():
+        image_vector = model.encode_image(preprocess(image).unsqueeze(0))
+        image_vector /= image_vector.norm(dim=-1, keepdim=True)
+        return (image_vector @ text_vector.T).item()
+```
+
+### 5. Score one batch
+
+Each worker reads one 700-row file and writes one aligned score shard:
+
+```python
+def score_batch(batch_path):
+    batch = pd.read_parquet(batch_path)
+    rows = []
+
+    for photo in batch.itertuples(index=False):
+        try:
+            score = score_photo(photo.image_url)
+            error = None
+        except Exception as exception:
+            score = None
+            error = type(exception).__name__
+
+        rows.append({
+            "listing_id": photo.listing_id, "image_idx": photo.image_idx,
+            "image_url": photo.image_url, "score": score, "error": error,
+        })
+
+    SCORE_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = SCORE_DIR / Path(batch_path).name
+    pd.DataFrame(rows).to_parquet(output_path, compression="zstd", index=False)
+    return str(output_path)
+```
+
+A failed download becomes one row with a null score. Other photos in the batch continue.
+
+### 6. Rank the shared shards
+
+Keep only the top 25 rows from each shard before combining them:
+
+```python
+def top_matches(score_paths):
+    candidates = []
+    for path in score_paths:
+        scores = pd.read_parquet(
+            path, columns=["listing_id", "image_url", "score"]
+        ).dropna(subset=["score"])
+        candidates.append(scores.nlargest(25, "score"))
+
+    return pd.concat(candidates, ignore_index=True).nlargest(25, "score").to_dict("records")
+```
+
+The reducer reads the complete result inside Burla and returns only 25 small dictionaries.
+
+### 7. Run the three remote stages
+
+Add the entry point:
+
+```python
+def main():
+    [batch_paths] = remote_parallel_map(
+        split_manifest, [str(MANIFEST_PATH)], func_cpu=4, func_ram=16, grow=True
+    )
+
+    score_paths = remote_parallel_map(
+        score_batch, batch_paths, func_cpu=1, func_ram=4, max_parallelism=800, grow=True
+    )
+
+    [matches] = remote_parallel_map(
+        top_matches, [score_paths], func_cpu=8, func_ram=32, grow=True
+    )
+
+    for match in matches:
+        print(match["listing_id"], match["score"])
+
+
+if __name__ == "__main__":
+    main()
+```
+
+## Run it
 
 ```bash
-make PY="$PWD/.venv/bin/python" \
-  stage00 stage01 stage02a stage02b stage07 \
-  stage05b stage05c
-python -m src.stages.s04_score_reviews
-make PY="$PWD/.venv/bin/python" stage05 stage06 site_data
+python rank_airbnb_photos.py
 ```
 
-The code below is excerpted from those stage scripts. The complete repository contains the worker functions, prompts, checkpoint handling, and site renderer.
-
-## The pipeline
-
-```text
-Inside Airbnb CSV exports
-  -> listing, calendar, and photo Parquet files
-  -> CLIP scores and Haiku-validated photo shortlists
-  -> heuristic, embedding, and Haiku review scores
-  -> findings and gallery JSON
-```
-
-### 1. Download each city snapshot
-
-The first stages discover up to four snapshots per city and validate each URL. One remote call then downloads each valid city-snapshot pair and writes a Parquet file to shared storage:
-
-```python
-results = remote_parallel_map(
-    download_and_clean_city,
-    args_list,
-    func_cpu=1,
-    func_ram=4,
-    max_parallelism=min(300, len(args_list)),
-    grow=True,
-    spinner=False,
-)
-```
-
-Each result contains counts and a shared path, not the listing table. A larger reducer reads all of those files inside the cluster, keeps the latest row for each listing, and preserves the full snapshot history separately:
-
-```python
-[merge_result] = remote_parallel_map(
-    merge_listings_parquets,
-    [MergeListingsArgs(
-        shared_root=SHARED_LISTINGS,
-        output_path=f"{SHARED_ROOT}/listings_clean.parquet",
-        history_path=f"{SHARED_ROOT}/listings_history.parquet",
-    )],
-    func_cpu=8,
-    func_ram=64,
-    max_parallelism=1,
-    grow=True,
-    spinner=False,
-)
-```
-
-Calendar files follow the same pattern. Their latest 365-day availability summaries become the pipeline's occupancy proxy.
-
-### 2. Score the photo manifest with CLIP
-
-The photo stage splits the shared manifest into batches of 700 URLs. Each worker downloads and scores one batch, then writes one Parquet result:
-
-```python
-results = remote_parallel_map(
-    cpu_score_image_batch,
-    batches,
-    func_cpu=1,
-    func_ram=4,
-    max_parallelism=min(800, len(batches)),
-    grow=True,
-    spinner=False,
-)
-```
-
-The current stage uses CPU workers. A worker copies the preloaded ViT-B/32 weights from shared storage to its node's local `/tmp` once, then reuses the loaded model while processing its batch.
-
-CLIP produces broad candidate scores for pets, unusual rooms, and TV placement. Haiku only sees the top 1,500 pet, 4,000 room, and 2,000 TV candidates, with at most 200 API workers running at once.
-
-### 3. Narrow 50.7 million reviews
-
-The review source is append-only, so the pipeline downloads only the latest review export for each city and deduplicates by review ID. It rewrites the merged Parquet file into 5,000-row groups so each heuristic worker reads one row group rather than scanning the full file.
-
-The current source then keeps 250,000 reviews, embeds them with `all-MiniLM-L6-v2`, clusters them into 40 groups, and sends 12,000 candidates to Haiku:
-
-```python
-results = remote_parallel_map(
-    embed_reviews_batch,
-    batches,
-    func_cpu=2,
-    func_ram=8,
-    max_parallelism=min(200, len(batches)),
-    grow=True,
-    spinner=False,
-)
-```
-
-This call runs the embedding model on CPUs because it does not request `func_gpu`. Each batch writes its vectors and scores to shared Parquet; one 16-CPU reducer performs the clustering.
-
-### 4. Build the published artifacts
-
-One final 16-CPU, 64 GB worker joins the latest listings, calendar proxy, image scores, Haiku labels, review scores, and bootstrap intervals. It returns small JSON-compatible sections to the client, which writes the static site's data files.
-
-## Published result
+## Result from the recorded source run
 
 | Metric | Value |
 |---|---:|
 | Cities | 119 |
 | Validated city-snapshot pairs | 282 |
-| Latest listings | 1,740,077 |
 | Photo manifest rows | 1,945,032 |
 | Photo-score rows | 1,710,664 |
-| Reviews | 50,686,612 |
-| Peak workers recorded | 1,741 |
 
-The committed findings accept associations for the pet proxy, unusual-photo flag, and messiness quartile. They reject brightness and plant-count findings under the pipeline's confidence-interval rule.
-
-These are associations with an availability proxy, not causal estimates of bookings. `occupancy_365` counts every unavailable date, including dates blocked by a host. The pet correlation also uses CLIP or YOLO-derived features, not the Haiku-validated pet gallery.
-
-The committed runtime log totals 22.9 hours and $1,024.89 across repeated attempts, failures, and reruns. It is evidence of the development run, not a clean end-to-end benchmark.
+The recorded source scored a fixed set of prompts, while the focused script scores only the prompt above. CLIP similarity is a retrieval score, not a verified label. A high score means the image aligns with the prompt more closely than other available images in this corpus.

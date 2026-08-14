@@ -1,10 +1,11 @@
----
-description: Transform a gzipped JSONL file drop in parallel while capping Postgres connections.
----
-
 # Load an S3 file drop into Postgres
 
-This example maps one gzipped JSONL object to one remote ETL call. Each call reads from S3, transforms its rows, and opens one Postgres connection. `max_parallelism` therefore limits the connections created by this job.
+In this example we:
+
+* List the gzipped JSONL objects in one S3 file drop.
+* Transform one object per remote ETL call.
+* Insert new event IDs into Postgres and skip conflicts.
+* Cap worker concurrency to protect the database.
 
 The input bucket and database belong to you. The [repository example](https://github.com/Burla-Cloud/examples/blob/main/python-etl-no-airflow/main.py) does not include a public dataset or a measured run, so this page does not claim a file count or runtime.
 
@@ -45,15 +46,14 @@ export MAX_DB_LOADERS="<connection-limit-for-this-job>"
 
 Your local AWS identity must be able to list the source prefix. The worker role handles object reads.
 
-## The ETL script
+## 1. List the input files
 
-Save the following as `main.py`:
+Create `main.py` and add the next four blocks in order. Start by listing every gzipped JSONL object for the run date:
 
 ```python
 import gzip
 import json
 import os
-from pathlib import Path
 
 import boto3
 import psycopg2
@@ -64,43 +64,34 @@ S3_BUCKET = os.environ["S3_BUCKET"]
 RUN_DATE = os.environ["RUN_DATE"]
 DATABASE_URL = os.environ["DATABASE_URL"]
 MAX_DB_LOADERS = int(os.environ["MAX_DB_LOADERS"])
-REPORT_PATH = Path("etl-report.jsonl")
+REPORT_PATH = "etl-report.jsonl"
 
 if MAX_DB_LOADERS < 1:
     raise ValueError("MAX_DB_LOADERS must be at least 1")
 
 s3 = boto3.client("s3")
 keys = []
-pages = s3.get_paginator("list_objects_v2").paginate(
-    Bucket=S3_BUCKET,
-    Prefix=f"raw/{RUN_DATE}/",
-)
-for page in pages:
+for page in s3.get_paginator("list_objects_v2").paginate(
+    Bucket=S3_BUCKET, Prefix=f"raw/{RUN_DATE}/"
+):
     keys.extend(
-        obj["Key"]
-        for obj in page.get("Contents", [])
-        if obj["Key"].endswith(".json.gz")
+        obj["Key"] for obj in page.get("Contents", []) if obj["Key"].endswith(".json.gz")
     )
 
 print(f"Found {len(keys):,} files")
+```
 
+## 2. Transform and load one file
 
-def etl_one_file(key: str) -> dict:
-    body = boto3.client("s3").get_object(
-        Bucket=S3_BUCKET,
-        Key=key,
-    )["Body"].read()
-    rows_in = [
-        json.loads(line)
-        for line in gzip.decompress(body).splitlines()
-        if line
-    ]
+Each remote call downloads one object, keeps the supported event types, and inserts new event IDs in one transaction:
+
+```python
+def etl_one_file(key):
+    body = boto3.client("s3").get_object(Bucket=S3_BUCKET, Key=key)["Body"].read()
+    rows_in = [json.loads(line) for line in gzip.decompress(body).splitlines() if line]
     rows_out = [
         (
-            row["event_id"],
-            row["user_id"],
-            row["event_type"],
-            row["ts"],
+            row["event_id"], row["user_id"], row["event_type"], row["ts"],
             float(row.get("amount") or 0),
             (row.get("country") or "XX").upper(),
         )
@@ -110,38 +101,43 @@ def etl_one_file(key: str) -> dict:
 
     connection = psycopg2.connect(DATABASE_URL)
     try:
-        with connection:
-            with connection.cursor() as cursor:
-                if rows_out:
-                    execute_values(
-                        cursor,
-                        """
-                        INSERT INTO events (
-                            event_id, user_id, event_type, ts, amount, country
-                        )
-                        VALUES %s
-                        ON CONFLICT (event_id) DO NOTHING
-                        """,
-                        rows_out,
-                        page_size=1_000,
+        with connection, connection.cursor() as cursor:
+            if rows_out:
+                execute_values(
+                    cursor,
+                    """
+                    INSERT INTO events (
+                        event_id, user_id, event_type, ts, amount, country
                     )
+                    VALUES %s
+                    ON CONFLICT (event_id) DO NOTHING
+                    """,
+                    rows_out,
+                    page_size=1_000,
+                )
     finally:
         connection.close()
 
-    return {
-        "key": key,
-        "rows_in": len(rows_in),
-        "rows_out": len(rows_out),
-    }
+    return {"key": key, "rows_in": len(rows_in), "rows_ready": len(rows_out)}
+```
 
+## 3. Run with bounded concurrency
 
-with REPORT_PATH.open("w") as report_file:
-    for report in remote_parallel_map(
-        etl_one_file,
-        keys,
-        max_parallelism=MAX_DB_LOADERS,
-        generator=True,
-    ):
+Use the database connection limit as Burla's concurrency limit:
+
+```python
+reports = remote_parallel_map(
+    etl_one_file, keys, max_parallelism=MAX_DB_LOADERS, generator=True
+)
+```
+
+## 4. Write the local report
+
+Stream the compact per-file reports to disk as calls finish:
+
+```python
+with open(REPORT_PATH, "w") as report_file:
+    for report in reports:
         report_file.write(json.dumps(report) + "\n")
 
 print(REPORT_PATH)
