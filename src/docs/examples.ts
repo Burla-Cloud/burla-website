@@ -217,9 +217,9 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
       },
       {
         route: "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
-        title: "Run 1B option simulations",
+        title: "Estimate hurricane portfolio loss",
         description:
-          "Reduce seeded option-price paths into an estimate with a standard error.",
+          "Simulate one million hurricane years and combine them into annual tail-loss estimates.",
         icon: "dice",
       },
     ],
