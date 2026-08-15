@@ -219,12 +219,12 @@ export const WORKLOADS = {
     },
     {
       icon: "dice",
-      metric: "1B",
-      metricLabel: "option paths simulated",
-      domain: "Finance",
+      metric: "1M",
+      metricLabel: "hurricane years simulated",
+      domain: "Insurance",
       hideOnHome: true,
-      title: "Run 1B option simulations",
-      desc: "Split deterministic streams across workers and reduce one estimate.",
+      title: "Estimate hurricane portfolio loss",
+      desc: "Combine sparse annual-loss histograms into 1% and 0.4% AEP estimates.",
       href: "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
     },
     {
