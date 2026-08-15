@@ -72,8 +72,6 @@ const REGISTRY = {
     "/docs/all-examples/production-data-jobs/image-dataset-resize",
   "demo-blogs/rate-limited-api-requests.md":
     "/docs/all-examples/production-data-jobs/rate-limited-api-requests",
-  "demo-blogs/parallel-web-scraping.md":
-    "/docs/all-examples/production-data-jobs/parallel-web-scraping",
   "demo-blogs/monte-carlo-simulation.md":
     "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
 
@@ -104,7 +102,6 @@ const SITE_OWNED_ROUTES = new Set([
   "/docs/all-examples/production-data-jobs/python-etl-no-airflow",
   "/docs/all-examples/production-data-jobs/image-dataset-resize",
   "/docs/all-examples/production-data-jobs/rate-limited-api-requests",
-  "/docs/all-examples/production-data-jobs/parallel-web-scraping",
   "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
   "/docs/all-examples/scientific-and-geospatial-work/bioinformatics-alignment",
   "/docs/all-examples/scientific-and-geospatial-work/ghcn-rainiest-day",

@@ -32,7 +32,6 @@ export type Mark3DKind =
   | "pin"
   | "code"
   | "image"
-  | "globe"
   | "dice"
   | "helix"
   | "raindrop"
@@ -98,20 +97,6 @@ function ringXYAt(cx: number, cy: number, radius: number, z: number, steps = 18)
   for (let i = 0; i < steps; i += 1) {
     const angle = (i / steps) * TAU;
     points.push([cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius, z]);
-  }
-  return polyline(points, true);
-}
-
-/** Great circle through the poles at longitude phi. */
-function meridian(radius: number, phi: number, steps = 32): Segment[] {
-  const points: Vec3[] = [];
-  for (let i = 0; i < steps; i += 1) {
-    const theta = (i / steps) * TAU;
-    points.push([
-      radius * Math.cos(theta) * Math.cos(phi),
-      radius * Math.sin(theta),
-      radius * Math.cos(theta) * Math.sin(phi),
-    ]);
   }
   return polyline(points, true);
 }
@@ -1352,32 +1337,6 @@ const ICONS: Record<Mark3DKind, IconSpec> = {
     dots: (time) => {
       const scale = 0.72 + Math.sin(time * 0.7) * 0.14;
       return [{ position: [0.55 * scale, 0.36 * scale, 0.07], radius: 2.4, live: true }];
-    },
-  },
-
-  // Web scraping: the globe with a crawler in orbit.
-  globe: {
-    base: [
-      ...ringXZ(0.7, 0, 32),
-      ...ringXZ(0.574, 0.4, 26),
-      ...ringXZ(0.574, -0.4, 26),
-      ...meridian(0.7, 0),
-      ...meridian(0.7, TAU / 6),
-      ...meridian(0.7, TAU / 3),
-    ],
-    accents: () => [
-      { segments: [], opacity: 0 },
-      { segments: [], opacity: 0 },
-    ],
-    dots: (time) => {
-      const angle = time * 0.4;
-      return [
-        {
-          position: [Math.cos(angle) * 0.98, Math.sin(angle) * 0.34, Math.sin(angle) * 0.86],
-          radius: 2.8,
-          live: true,
-        },
-      ];
     },
   },
 

@@ -131,13 +131,6 @@ const ICONS: Record<string, ReactNode> = {
       <path d="m6 17 4.2-4.1 2.7 2.6 2.1-2 3 3.1" />
     </>
   ),
-  // A globe for distributed web work.
-  globe: (
-    <>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M4.4 10h15.2M4.4 14h15.2M12 4c2 2.2 3 4.9 3 8s-1 5.8-3 8M12 4c-2 2.2-3 4.9-3 8s1 5.8 3 8" />
-    </>
-  ),
   // Source-code brackets around a repository dot.
   code: (
     <>

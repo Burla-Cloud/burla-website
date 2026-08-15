@@ -191,7 +191,7 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
   },
   {
     label: "Production Data Workflows",
-    description: "Repeatable ETL, backfills, scraping, and simulation jobs.",
+    description: "Repeatable ETL, backfills, image processing, and simulation jobs.",
     legacyRoute: "/docs/all-examples/production-data-jobs",
     examples: [
       {
@@ -214,13 +214,6 @@ export const EXAMPLE_CATEGORIES: ExampleCategory[] = [
         description:
           "Backfill records with bounded concurrency, local pacing, and explicit retry outcomes.",
         icon: "gate",
-      },
-      {
-        route: "/docs/all-examples/production-data-jobs/parallel-web-scraping",
-        title: "Scrape 1M web pages",
-        description:
-          "Scrape authorized static pages in parallel while pacing requests to each host.",
-        icon: "globe",
       },
       {
         route: "/docs/all-examples/production-data-jobs/monte-carlo-simulation",
